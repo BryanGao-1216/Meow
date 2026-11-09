@@ -1,8 +1,10 @@
 # 上传 Git 与另一台 Mac 测试
 
+如果另一台设备只需要使用应用，可以直接发送 `.dmg` 安装包，无需拉取源码或安装开发工具，见 [安装与分发说明](DISTRIBUTION.md)。下面的步骤面向需要从源码构建的开发者。
+
 ## 提交哪些文件
 
-提交 `Sources/`、`Tests/`、`scripts/`、`docs/`、`assets/`、`Package.swift`、根目录 `Package.resolved`、`.gitignore`、`README.md`、`LICENSE` 和 `model/README.md`。
+提交 `Sources/`、`Tests/`、`scripts/`、`packaging/`、`docs/`、`assets/`、`Package.swift`、根目录 `Package.resolved`、`.gitignore`、`README.md`、`LICENSE` 和 `model/README.md`。
 
 模块化之后，旧目录中的文件显示为删除，新目录中的文件显示为未跟踪，这是文件迁移的正常状态。提交时需包含新目录：仅使用 `git commit -am` 会漏掉未跟踪文件。可以先执行下面的命令检查暂存内容，再自行提交、推送：
 

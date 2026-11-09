@@ -33,7 +33,7 @@ enum MemorySelfTest {
         ])
         check(memory.journal.facts.contains { $0.text == "主人喜欢茉莉花茶" }, "迁移主人原话")
         check(!memory.journal.facts.contains { $0.text.contains("南瓜") }, "宠物回复不能变成主人事实")
-        check(memory.journal.facts.contains { $0.key == "主人.称呼" && $0.origin == .initialPersona }, "原有人设的称呼只迁入一次")
+        check(!memory.journal.facts.contains { $0.key == "主人.称呼" || $0.key == "主人.姓名" }, "新安装不预填其他主人的姓名或称呼")
         memory.flush()
         let restored = PetMemory(storageURL: url, respectsSettings: false)
         check(restored.journal.facts == memory.journal.facts, "控制器重启恢复")

@@ -14,6 +14,8 @@ open build/Meow.app
 
 从 Git 拉取到另一台 Mac 的完整流程、提交范围、各设备独立配置的数据，以及 Command Line Tools 的已知环境问题，见 [SECOND_MAC.md](SECOND_MAC.md)。直接运行 `swift build` / `swift test` 前，应先运行 `python3 scripts/prepare_iroh.py`。
 
+向普通使用者分发时，可执行 `./scripts/package_dmg.sh` 生成无需开发工具的安装磁盘；已有应用可用 `--app build/Meow.app` 直接封装。签名限制、安装和更新说明见 [DISTRIBUTION.md](DISTRIBUTION.md)。
+
 Configure **Settings → Conversation model → Cloud · Volcengine Ark** with the
 Agent Plan Base URL `https://ark.cn-beijing.volces.com/api/plan/v3`, model
 `ark-code-latest` or another supported model name, and your Plan-specific API Key.

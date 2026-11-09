@@ -4,8 +4,9 @@ import Foundation
 /// and parses the structured replies ("[emotion] text", optional "[action]").
 enum Persona {
 
-    // 仅首次建立小本本时迁入；之后在聊天或小本本中更新，不会在遗忘后重复注入。
-    static let initialOwnerProfile = "我叫王珺。叫我珺大王"
+    // 分发给新主人时从空白资料开始；已有小本本沿用本机保存的资料。
+    // 私人定制可填写首次初始化模板，日常称呼通过聊天学习。
+    static let initialOwnerProfile = ""
 
     static let emotionTags = Emotion.allCases.filter { $0 != .neutral }.map(\.rawValue)
     static let actionTags = PetAction.allCases.map(\.rawValue)
