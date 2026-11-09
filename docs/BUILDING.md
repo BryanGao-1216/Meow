@@ -17,7 +17,7 @@ open build/Meow.app
 Configure **Settings → Conversation model → Cloud · Volcengine Ark** with the
 Agent Plan Base URL `https://ark.cn-beijing.volces.com/api/plan/v3`, model
 `ark-code-latest` or another supported model name, and your Plan-specific API Key.
-Test the connection and save. See the [cloud setup and usage notes](../README.md#volcengine-ark-cloud-mode-no-model-download).
+Test the connection and save. See the [云端配置与使用说明](../README.md#配置火山方舟).
 
 The requirements below apply to the **local MLX** build:
 

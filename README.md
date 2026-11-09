@@ -4,235 +4,306 @@
 
 # Meow · 高小喵
 
-**A macOS desktop pet with a local LLM mind or optional Volcengine cloud chat.**
-Local mode is fully offline, with the language model inside one self-contained `.app`.
-A lightweight cloud-only build can use your own Volcengine Ark API Key.
+**一只会聊天、记住主人、做动作、提醒待办和收发来信的桌面小猫。**
 
-![Platform](https://img.shields.io/badge/platform-macOS%2014.5%2B-blue)
-![Chip](https://img.shields.io/badge/chip-Apple%20Silicon-black)
-![Swift](https://img.shields.io/badge/Swift-5.10-orange)
-![MLX](https://img.shields.io/badge/inference-MLX-green)
-![License](https://img.shields.io/badge/license-MIT-lightgrey)
+支持火山方舟云端对话与本地模型推理，界面和对话均使用简体中文。
 
-<img src="assets/pet-states.png" width="800" alt="高小喵的状态 — all drawn and animated procedurally, no image assets" />
+![系统要求](https://img.shields.io/badge/系统-macOS%2014.5%2B-blue)
+![芯片架构](https://img.shields.io/badge/芯片-Apple%20Silicon-black)
+![开发语言](https://img.shields.io/badge/语言-Swift%205.10%2B-orange)
+![开源许可](https://img.shields.io/badge/许可-MIT-lightgrey)
 
-*Every state above is drawn procedurally with SwiftUI Canvas — the whole cat is vector code.*
+<img src="assets/pet-states.png" width="800" alt="高小喵的表情与动作展示" />
+
+小喵的造型和动画由 SwiftUI 画布绘制，可随状态变化，不依赖整套贴图素材。
 
 </div>
 
-## What is this?
+## 小喵能做什么
 
-高小喵 is a little cat who lives on your desktop, powered by a quantized
-1B-parameter LLM ([MiniCPM5-1B](https://huggingface.co/mlx-community/MiniCPM5-1B-OptiQ-4bit))
-running locally on the Apple Silicon GPU via
-[MLX Swift](https://github.com/ml-explore/mlx-swift). What she *says* is wired
-to what she *does*: every generated reply carries an emotion tag that drives her
-face and animations, her live state (hunger, energy, mood, what she's doing,
-what just happened to her) is injected into every prompt, and chat commands are
-actually obeyed — tell her to dance and she dances.
-
-### She acts on her own
-
-- Wanders along the bottom of your screen, stretches, spins, naps when tired
-- **Jumps onto your app windows**, walks along their top edges, rides them when
-  you drag them, and tumbles off (surprised) when you close them
-- Gets hungry over time, sulks when neglected, sleeps at night
-- Watches your cursor, blinks, flicks her ears
-- **Talks to you spontaneously** — lines generated from her live state using your selected model
-
-### You can interact
-
-| Action | Result |
+| 功能 | 说明 |
 |---|---|
-| Click | poke her (spam-poking makes her angry) |
-| Double-click | open the chat window |
-| Right-click / menu-bar icon | feed 🐟🍪, play 🧶, nap 💤, call her over, settings |
-| Drag & toss | pick her up (she flails!) — real physics, squash-and-stretch landing |
-| Stroke back and forth | petting → hearts and purring |
+| 桌面陪伴 | 自主散步、伸懒腰、看鼠标、眨眼、睡觉，表现饥饿、精力和心情变化 |
+| 聊天与动作 | 中文聊天、讲故事、写诗，也能听懂“打个滚”“挥挥爪子”等动作指令 |
+| 贴墙探身 | 拖到屏幕两侧后固定，只露出上半张脸；鼠标靠近时探出身体打招呼 |
+| 小本本 | 记住主人的称呼、生日、喜好和共同经历，跨重启保留并影响行为 |
+| 热点小报 | 每天北京时间 11:00、16:00、19:00，结合主人偏好挑选并分享微博热点 |
+| 喵喵备忘录 | 手动或通过对话管理待办，到点提醒，每半小时判断是否需要提前提醒 |
+| 喵喵信箱 | 两台固定的 Mac 互寄文本信；收到未读信时，小喵会抱着 💌 等你拆开 |
 
-拖到屏幕左右边缘后松手，小喵会固定在墙边原来的高度，只露出连着耳朵、截止到眼睛下方的上半张脸，嘴巴和身体藏在屏幕外，仍会眨眼、看鼠标、聊天和分享热点。
-鼠标先移开，再靠近时，它会轻轻弹出嘴巴、肚子、爪子和摇动的尾巴，用四句固定招呼轮流回应；移开后一起缩回。招呼在本地触发、不调用模型，每次靠近最多一句，间隔至少 25 秒，已有聊天或热点气泡时不抢话，睡觉时不被鼠标吵醒。
-拖回桌面，或在菜单点 **过来这边!**，即可恢复活动；明确的移动指令也会让它离墙。
-贴墙位置在重启后保留，支持尺寸调整与显示器变化；多显示器相接的边界可自由拖过，不会误吸附。
-造型沿用现有矢量绘制，无需另外准备图片素材。
+## 快速开始
 
-### 喵喵备忘录
+### 环境要求
 
-在菜单中打开 **喵喵备忘录…**，直接维护时间与任务；也可以说“明天晚上七点提醒我参加聚会”、“把聚会改到八点”、“买猫粮已经完成了”。时间不明确时会先问清楚，真正保存后才确认。
+| 项目 | 要求 |
+|---|---|
+| 设备 | Apple 芯片的 Mac |
+| 系统 | macOS 14.5 或更高版本 |
+| 开发工具 | 可用且版本匹配的 Xcode 命令行工具，Swift 5.10 或更高版本 |
+| 其他工具 | Git、Python 3.9 或更高版本 |
+| 首次构建 | 能访问 GitHub，以下载通信依赖 |
+| 云端功能 | 可用的火山方舟接口地址、模型名称和接口密钥 |
 
-到点时小喵会用 LLM 生成提醒；每半小时也会结合当前备忘录、主人偏好和最近提醒，判断是否需要提前叫你准备。提醒会显示在气泡和聊天记录中。可关闭提前提醒，保留到点闹钟；备忘录保存在本机，需应用运行、电脑唤醒并联网，恢复后会补上错过的到点提醒。
+尚未安装开发工具时，先执行下面的命令，并等待安装完成：
 
-操作、模型请求与可靠性说明见 [备忘录设计](docs/MEMOS_DESIGN.md)。项目按独立 SwiftPM 业务模块组织，应用层按职责整理，扩展入口见 [模块架构](docs/ARCHITECTURE.md)。
+```sh
+xcode-select --install
+```
 
-### 喵喵信箱
+### 构建云端版
 
-两台 Apple 芯片 Mac 可以互相寄文本信。两边打开 **喵喵信箱… → 启用通信 → 设备绑定**，各复制自己的设备码给对方，再各粘贴一次对方的码。绑定完成后点 **写一封信** 即可发送；对方的小喵收到后会抱着 💌，点击信封展开正文，信会继续保留在信箱里。
+使用云端模型时，无需下载本地模型权重，也无需安装 Rust 或配置 Metal 着色器编译环境。
 
-基于 iroh-ffi，正文不经过大模型。离线时保存在本机待寄箱，自动重试；“已送达”表示对方已经保存。双方都需运行新版 Meow、保持电脑唤醒并启用信箱。通信版最低要求 macOS 14.5。详细使用与模块边界见 [信箱设计](docs/MAILBOX_DESIGN.md)。
+```sh
+git clone https://github.com/BryanGao-1216/Meow.git
+cd Meow
 
-### 用对话叫小喵做动作
-
-动作库在程序内部维护，菜单里不展示。可以直接说 `打个滚`、`挥挥爪子`、`点点头`、`摇摇头`，也能说跳舞、转圈、跳跃、伸懒腰、散步、过来、跳上窗口、下来、玩毛线球、吃小鱼干、睡觉、起床、停下。
-明确指令会先开始动作，再同时生成聊天回复；每轮最多执行一个。`不要打滚` 会停下，讲故事、引用或假设中的动作不会直接执行。模型未就绪时，明确的动作指令仍可在聊天框发送。
-
-小喵也会按状态自行活动：开心且有精力时偶尔打滚或跳舞，主人靠近时挥爪，疲惫时偏向伸懒腰，不高兴时可能摇头。记忆中的安静偏好会降低活跃动作的权重。自动动作有冷却，不打断拖拽、睡觉或正在执行的动作，也不会主动离墙。
-普通聊天里的动作选择复用当前回复，不增加一次单独的模型请求；空闲自主动作完全在本机判断。维护方式见 [动作系统设计](docs/ACTIONS.md)。
-
-### Chat with her — she obeys and delivers
-
-- **Commands**: dance / spin / jump / come here / go to sleep / wake up / climb
-  onto a window / get down / play / eat / stop — detected deterministically in
-  Chinese, so she obeys even when the small model forgets
-  its action tag
-- **Creative asks**: tell a joke, tell a story, write a poem (in a style you
-  name), write a short essay, riddles, word games, a song, a fortune, praise —
-  a longform generation mode with delivery-enforcing quality gates and curated
-  fallback content guarantees you always get the thing you asked for
-- **Context**: she remembers the conversation, knows what just happened to her
-  ("you just petted me!", "I fell off a window two minutes ago"), and answers
-  profile questions consistently (age, birthday, zodiac, likes, dislikes)
-- **Chinese only**: UI, dialogue, commands, and fallback content use 简体中文
-- **Deep thinking mode** (Settings toggle): the model reasons in a hidden
-  `<think>` block before answering — you only ever see a "thinking…" indicator,
-  then the answer streams in. Slower, smarter; retries auto-degrade to fast mode
-
-## Getting started
-
-另一台 Mac 从 Git 拉取后，需要先安装开发工具并构建。云端版一键打包会自动准备固定版本的 iroh-ffi，无需上传 `vendor/`、模型或构建产物。提交范围、拉取步骤、凭据与设备身份说明见 [上传 Git 与另一台 Mac 测试](docs/SECOND_MAC.md)。
-
-### 每天三次的微博热点
-
-高小喵会在北京时间 **11:00、16:00、19:00**，按主人记忆中的偏好挑选一条微博热搜，等空闲时主动分享。
-可以告诉它 `我关注人工智能`、`我不喜欢娱乐八卦`。从猫咪菜单或设置打开 **热点小报…**，查看来源或点击 **现在找一条**。
-需保持小喵运行和联网；休眠恢复只补一小时内最近一期。云端选题、写稿复用当前模型并消耗额度，可在设置关闭定时分享。
-详情与边界见 [微博热点设计](docs/NEWS_DESIGN.md)。
-
-### 高小喵的长期记忆
-
-现在可以记住主人的称呼、喜好和共同经历，跨重启保留，并让熟悉度、安静偏好和跳窗偏好影响行为。
-从猫咪菜单或设置打开 **小本本…**，可查看原话来源、旧版本、共同经历并删除记忆。
-例如告诉它 `以后叫我珺大王吧`、`我喜欢茉莉花茶`、`我希望安静一些`；用 `清空记忆` 重新开始。
-云端整理复用当前模型，会额外消耗请求额度，可在设置关闭；本机基础记忆仍可用。
-设计、边界与使用说明见 [高小喵记忆设计](docs/MEMORY_DESIGN.md)。
-
-### Volcengine Ark cloud mode (no model download)
-
-```bash
 ./scripts/package_app.sh --cloud-only
 open build/Meow.app
 ```
 
-Settings opens automatically when cloud mode has no key yet. Otherwise open
-**Settings → Conversation model → Cloud · Volcengine Ark** and enter:
+打包脚本会自动准备固定版本的 iroh-ffi 源码，下载并校验官方 Apple 二进制，然后构建、打包和本机签名。首次需要下载约 41 MB 的通信二进制，后续复用本机缓存。
 
-| Setting | Agent Plan value |
+构建完成后，应用位于 `build/Meow.app`。关闭旧版应用，再打开新版即可。重新拉取更新后，也需再次执行打包命令。
+
+### 配置火山方舟
+
+首次启动尚未配置密钥时会打开设置；也可从菜单进入 **设置 → 对话模型 → 云端 · 火山方舟**。
+
+项目预设了以下接入参数：
+
+| 配置项 | 项目预设值或填写方式 |
 |---|---|
-| Base URL | `https://ark.cn-beijing.volces.com/api/plan/v3` |
-| Model | `ark-code-latest` (the model selected in your console), or a supported model name |
-| API Key | Your **Agent Plan dedicated API Key** from the [Agent Plan console](https://console.volcengine.com/ark/region:cn-beijing/subscription/agent-plan) |
+| 接口地址 | `https://ark.cn-beijing.volces.com/api/plan/v3` |
+| 模型名称 | `ark-code-latest`，或你的接入方案支持的模型名称 |
+| 接口密钥 | 填写与上述接入方案匹配的专属密钥 |
 
-Click **Test connection**, then **Save model settings**. Testing makes a small
-model request; saving reloads the configuration immediately. Keys are stored in
-macOS Keychain, never in the repository or preferences. The cloud-only build
-needs macOS 14.5+ and a working Swift 5.10+ toolchain, without MLX or Metal shaders.
+填写后点击 **测试连接**，成功后点击 **保存模型设置**。测试连接会发送一次小型模型请求；密钥保存在本机钥匙串中。
 
-Agent Plan credentials and URLs differ from the ordinary pay-as-you-go API.
-For ordinary Ark API access, use `https://ark.cn-beijing.volces.com/api/v3`, a
-matching platform API Key, and your model name / inference endpoint ID. The app
-never switches URLs or billing modes automatically. Refer to the official
-[Agent Plan integration guide](https://docs.volcengine.com/docs/ark/agent-plan-personal-other-tools?lang=zh)
-and [usage limits](https://docs.volcengine.com/docs/ark/agent-plan-personal-plan-overview?lang=zh):
-subscription text-model quotas are intended for supported AI tools, and should
-not be assumed to cover arbitrary application API traffic. Use ordinary Ark
-API access for application use outside your subscription's permitted scope.
+上表对应项目预设的 Agent Plan 接入方式。若使用普通按量接口，请将地址改为 `https://ark.cn-beijing.volces.com/api/v3`，同时填写匹配的密钥和模型名称或推理接入点编号。可用模型、额度和接入范围以你的控制台与官方说明为准，不同方案的凭据和地址不要混用。
 
-Cloud mode sends chat history and pet context (stats, recent interactions) to
-your configured service. Spontaneous dialogue also uses cloud requests; disable
-it in Settings if you only want requests when you chat. Emotion/action tags,
-command detection, quality checks, and fallback content still work in cloud mode.
+相关入口：[火山方舟控制台](https://console.volcengine.com/ark/region:cn-beijing/subscription/agent-plan)、[接入说明](https://docs.volcengine.com/docs/ark/agent-plan-personal-other-tools?lang=zh)。
 
-### Local offline mode
+云端聊天、主动搭话、记忆整理、热点选题和备忘录智能提醒会消耗模型额度。可在设置中调整主动搭话、云端整理记忆和定时热点的开关。
 
-```bash
-git clone https://github.com/Fangyuan025/Kokosuki.git
-cd Kokosuki
+### 可选：构建本地模型版
 
-# download the model weights (~907 MB, not in the repo) — see model/README.md
-cd model && for f in config.json generation_config.json model.safetensors \
+本地版通过 MLX 在设备上运行对话模型，需要额外下载模型权重，并准备带有 Metal 编译工具的 Xcode 开发环境。默认模型为 MiniCPM5-1B 的量化版本，权重约 907 MB。
+
+在项目根目录执行：
+
+```sh
+mkdir -p model
+for file in config.json generation_config.json model.safetensors \
   model.safetensors.index.json tokenizer.json tokenizer_config.json \
-  chat_template.jinja; do \
-  curl -L -O "https://huggingface.co/mlx-community/MiniCPM5-1B-OptiQ-4bit/resolve/main/$f"; done
-cd ..
+  chat_template.jinja; do
+  curl --fail --location --output "model/$file" \
+    "https://huggingface.co/mlx-community/MiniCPM5-1B-OptiQ-4bit/resolve/main/$file"
+done
 
-# build + bundle + sign → a single self-contained app
 ./scripts/package_app.sh
 open build/Meow.app
 ```
 
-Requirements: Apple Silicon Mac, macOS 14.5+, Xcode command line tools with the
-Metal compiler. Full details, packaging internals, and **how to build with a
-different MLX model** (Qwen, Gemma, larger MiniCPMs, …) are in
-[docs/BUILDING.md](docs/BUILDING.md).
+本地对话和基础互动可以离线运行。当前复杂记忆整理、热点选题和备忘录智能提醒仍使用云端模型；热点抓取和信箱通信也需要网络。本地模型模式不会自动为这些功能启用云端模型。
 
-## Customizing the pet
+更多构建细节与模型替换方式见 [构建说明](docs/BUILDING.md)。
 
-Settings offers four pet sizes: **Mini (0.5×)**, Small (0.8×), Medium (1.0×),
-and Large (1.3×). Changing size takes effect immediately and is saved locally.
+## 日常互动
 
-Personality and self-introduction are currently edited in source:
+| 操作 | 小喵的反应 |
+|---|---|
+| 单击身体 | 戳一戳；连续戳会不高兴 |
+| 双击身体 | 打开聊天窗口 |
+| 右键或点击菜单栏猫咪图标 | 打开喂食、玩耍、睡觉、设置及各功能入口 |
+| 拖动并松手 | 抱起、移动或抛出小喵，落地时有物理与形变动画 |
+| 在身上来回移动鼠标 | 抚摸、冒爱心 |
+| 拖到屏幕左右边缘 | 固定贴墙，暂停自主乱跑 |
+| 点击怀中的 💌 | 展开未读来信，信件继续保存在信箱中 |
 
-- `Sources/Kokosuki/Conversation/Persona.swift`, `system(_:)`: character name, personality,
-  profile, preferences, speech rules, and example conversations. The Chinese
-  introduction is the example following `主人: 你是谁呀?`. All prompts now use Chinese; edit this single active character definition.
-- `Sources/Kokosuki/Infrastructure/Localization.swift`: UI labels, fixed interaction responses
-  in `cannedTable`, and creative fallback content.
+设置中可选择 **迷你 0.5 倍、小 0.8 倍、中 1.0 倍、大 1.3 倍** 四种尺寸，也可调整主动搭话频率、夜间自动睡觉和自主跳窗。
 
-Rebuild and restart after editing source. Clearing chat history using the
-chat window's trash button helps prevent old character details from carrying
-over into the new conversation. There is no in-app personality editor yet.
+### 通过对话做动作
 
-## How it works
+直接对小喵说：
 
-```
-┌────────────────────────────── Meow.app ──────────────────────────────┐
-│                                                                          │
-│  PetEngine (30 Hz)          PetView                    Brain             │
-│  ├─ physics: gravity,       ├─ SwiftUI Canvas,         ├─ MLX Swift      │
-│  │  toss, squash/stretch    │  procedural vector cat   │  (GPU inference)│
-│  ├─ autonomy state machine  ├─ 20+ emotion/activity    ├─ manual ChatML  │
-│  ├─ window-top platforms    │  states, particles       ├─ rejection      │
-│  │  (CGWindowList)          └─ 30 fps timeline         │  sampling gates │
-│  ├─ stats + event memory                               ├─ curated        │
-│  └─ intent detection ───────── commands/creative ─────►│  fallbacks      │
-│                                                        └─ MiniCPM5-1B   │
-│  speech bubble ◄─── streamed, emotion-tagged replies ───┘   (bundled)    │
-└──────────────────────────────────────────────────────────────────────────┘
+```text
+打个滚给我看
+挥挥爪子
+点点头
+摇摇头
+跳个舞
+伸个懒腰
+跳上窗口
+过来陪我
+去睡觉吧
+停下来
 ```
 
-Highlights for the curious:
+明确指令会先开始动作，再生成聊天回复，每轮最多执行一个动作。动作指令不依赖模型成功返回；讲故事、引用或假设中的动作不会只因为出现动作词就直接执行。
 
-- **Speech ↔ behavior coupling**: replies are forced into `[emotion] text [action]`
-  shape (the assistant turn is prefilled with `[`); the emotion drives the face
-  the moment it streams in, the action tag triggers real animations.
-- **Reliability engineering for a 1B model**: every reply passes deterministic
-  quality gates — language match, no instruction echo, no verbatim repeats
-  (n-gram overlap catches re-punctuated self-plagiarism), no
-  announced-but-undelivered content, correct trivial arithmetic, tone checks —
-  with automatic resampling and hand-written fallback content as the backstop.
-- **Window parkour** uses only public `CGWindowList` bounds — no accessibility
-  or screen-recording permissions required. The app requests no permissions at all.
-- **Batch-tested**: `--selftest` and `--scenarios` run Chinese generation
-  suites with measurable pass gates (see [docs/BUILDING.md](docs/BUILDING.md#development-utilities)).
+小喵也会根据心情、精力和相处偏好自行活动。动作库由程序内部维护，菜单中不展示。实现方式见 [动作系统设计](docs/ACTIONS.md)。
 
-## Privacy
+### 贴墙与探身
 
-In local mode, inference runs in-process on your GPU and the app makes no
-network requests. In cloud mode, conversation and pet context are sent to the
-configured API service using your key. Pet stats and chat history are stored in
-`~/Library/Application Support/Kokosuki/`; preferences use `UserDefaults`, and
-the cloud API Key uses macOS Keychain. No telemetry is collected.
+将小喵拖到屏幕左侧或右侧后松手，它会停在对应高度，只露出连着耳朵、截止到眼睛下方的上半张脸，嘴巴和身体藏在屏幕外。
 
-## License
+鼠标移开后再靠近，它会轻轻弹出身体，露出嘴巴、肚子、爪子和尾巴，用固定短句打招呼；鼠标移开后缩回。招呼在本机触发，不调用模型，已有对话或提醒时不会抢话。收到未读来信时，会探出身体展示怀中的信封。
 
-[MIT](LICENSE) — the bundled model retains its own
-[Apache-2.0 license](https://huggingface.co/mlx-community/MiniCPM5-1B-OptiQ-4bit).
+拖回桌面、点击菜单中的 **过来这边!**，或发出明确移动指令，可恢复活动。贴墙位置会跨重启保留，并适配尺寸和显示器变化。
+
+## 记忆与主动陪伴
+
+### 小本本：记住主人
+
+从菜单或设置打开 **小本本…**，查看记住的资料、原话来源、旧版本和共同经历，也可删除资料或清空记忆。
+
+| 你可以说 | 小喵会如何使用 |
+|---|---|
+| “以后叫我小高吧” | 记住称呼，用于之后的聊天 |
+| “我的生日是十月九号” | 记住明确的生日信息 |
+| “我喜欢茉莉花茶” | 保存喜好，并在相关话题中检索 |
+| “我现在不喜欢茉莉花茶了” | 更新同主题资料，保留旧版本供查看 |
+| “我希望安静一些” | 降低主动搭话频率和活跃行为 |
+| “不要跳窗” | 调整自主跳窗偏好 |
+| “忘掉咖啡的记忆” | 删除相关主题的记忆 |
+
+明确的称呼、生日和常见喜好会由本机规则即时提取；开启云端整理后，有记忆价值的消息还会在正常回复完成后交给当前云端模型整理。记忆不是只在固定时刻统一更新。
+
+摸头、喂食、玩耍等真实互动会累积共同经历和熟悉度，并影响自主靠近、搭话等行为。**清空聊天只清除短期对话；删除长期记忆需使用小本本或遗忘指令。**
+
+设计与边界见 [记忆系统说明](docs/MEMORY_DESIGN.md)。
+
+### 热点小报：聊主人感兴趣的话题
+
+启用定时分享后，小喵会在北京时间每天 **11:00、16:00、19:00** 抓取微博热点，结合记忆中的偏好选择话题，等空闲时主动分享。
+
+可以告诉它“我关注人工智能”“我不喜欢娱乐八卦”，再从 **热点小报…** 查看来源或点击 **现在找一条**。菜单名称为“热点小报”，当前内容来源为微博。
+
+功能需要应用运行、电脑唤醒、网络和可用的云端模型。休眠恢复时只补最近一小时内的一期，避免集中推送过时话题。详见 [热点系统说明](docs/NEWS_DESIGN.md)。
+
+### 喵喵备忘录：记下任务，适时提醒
+
+从 **喵喵备忘录…** 手动新增、修改、完成或取消任务，也可以通过对话操作：
+
+```text
+明天晚上七点提醒我参加聚会
+把聚会改到明天晚上八点
+买猫粮已经完成了
+取消参加聚会的提醒
+我有哪些备忘录？
+```
+
+时间或目标不明确时会先追问，操作实际保存成功后才确认。备忘录有两种提醒方式：
+
+- **到点提醒**：任务到期后，由模型生成小喵口吻的提醒。
+- **提前提醒**：每半小时结合当前任务、主人偏好和最近提醒，判断是否需要提前叫你准备；没有必要就保持安静。
+
+提前提醒可单独关闭，到点提醒仍保留。两种提醒均依赖可用的云端模型；应用退出或电脑休眠期间不会发出提醒，恢复后会补处理尚未通知的到点任务。详见 [备忘录说明](docs/MEMOS_DESIGN.md)。
+
+### 喵喵信箱：让两只小喵互相送信
+
+当前支持两台固定的 Apple 芯片 Mac 之间发送纯文本信件，每封最多 5000 字，正文的编码大小也有限制。
+
+1. 两台 Mac 都启动新版 Meow，打开 **喵喵信箱…** 并启用通信。
+2. 在 **设备绑定** 中，各自复制本机设备码并交给对方。
+3. **两边各粘贴一次对方的设备码并绑定**，只绑定一边还不能互相收信。
+4. 点击 **写一封信**，填写正文并寄出。
+5. 收件方小喵会抱着 💌，点击信封展开正文，读完后仍可在信箱查看历史。
+
+对方离线时，信保存在发件设备的待寄箱并自动重试。**已送达表示对方已经保存，不表示主人已经阅读。** 双方都需运行应用、保持电脑唤醒并启用信箱。
+
+通信基于 iroh-ffi，不需要模型密钥，信件正文不提交给大模型。可直连时使用直接连接，必要时使用公共中继；当前没有服务器代收离线信件。详见 [信箱说明](docs/MAILBOX_DESIGN.md)。
+
+## 修改性格与主人资料
+
+| 要修改的内容 | 位置或操作 |
+|---|---|
+| 小喵的性格、来历、档案与自我介绍 | `Sources/Kokosuki/Conversation/Persona.swift` 中的 `system(_:)` 和示例对话 |
+| 中文界面、固定互动台词与备用回复 | `Sources/Kokosuki/Infrastructure/Localization.swift` |
+| 主人的姓名、称呼、生日和喜好 | 日常通过聊天告诉小喵，记错时重新陈述或从小本本删除 |
+| 首次建立小本本时的主人资料模板 | `Persona.swift` 中的 `initialOwnerProfile`，仅首次初始化生效 |
+
+修改源码后需重新构建并重启。旧对话可能影响角色表现，可按需清空聊天。当前没有应用内的人设编辑器。
+
+## 项目结构
+
+项目按业务内核、传输适配和应用层划分模块：
+
+```text
+Sources/
+├── KokosukiCloud/       云端请求、流式回复与配置校验
+├── KokosukiMemory/      记忆资料、检索、版本与学习规则
+├── KokosukiNews/        热点抓取、选题、偏好与时间策略
+├── KokosukiMemos/       备忘录数据、提醒策略与模型协议
+├── KokosukiMailbox/     信件、设备码、待寄队列与回执
+├── KokosukiIroh/        iroh-ffi 通信适配
+└── Kokosuki/
+    ├── App/            应用入口装配与菜单
+    ├── Conversation/   模型调度、人设、聊天与对话工具
+    ├── Pet/            状态、物理、动作、造型与贴墙
+    ├── Features/       小本本、热点、备忘录和信箱界面与控制器
+    ├── Settings/       设置与偏好
+    ├── Infrastructure/ 本机存储、钥匙串与中文文案
+    └── Diagnostics/    隔离自检、场景检查与实窗截图
+```
+
+业务内核通过协议和依赖注入与应用连接。后台功能由 `CompanionFeatures` 统一管理生命周期，对话工具通过 `ConversationToolRouter` 接入。详细依赖关系和扩展步骤见 [架构说明](docs/ARCHITECTURE.md)。
+
+应用名称为 `Meow.app`，宠物名称为“高小喵”。代码中的 `Kokosuki` 模块名、应用标识和存储目录保留，用于兼容现有数据。
+
+## 数据与隐私
+
+| 数据或功能 | 存储位置或发送范围 |
+|---|---|
+| 聊天、记忆、备忘录、信件与宠物状态 | 本机 `~/Library/Application Support/Kokosuki/` |
+| 窗口位置、尺寸和模型设置 | 本机偏好设置 |
+| 模型密钥、可选的微博登录凭据、信箱私钥 | macOS 钥匙串 |
+| 云端聊天与智能功能 | 按功能需要，将对话、宠物状态、相关记忆或任务发送给所配置的模型服务 |
+| 热点抓取 | 访问微博；登录凭据为可选项 |
+| 信箱通信 | 与已绑定设备加密通信，并使用所需的发现或中继服务；本机信件以明文文件保存 |
+
+本地模型推理在设备内完成，但开启热点、信箱等功能仍会访问网络。需要离线使用时，应同时关闭相应联网功能。
+
+源码拉取和应用复制不会同步个人数据或钥匙串。另一台 Mac 需要独立配置密钥，并为信箱生成自己的设备身份；两台设备测试时不要复制信箱私钥或整份信箱存储。
+
+## 开发与验证
+
+完成云端版构建后，可运行不消耗模型额度的自检：
+
+```sh
+build/Meow.app/Contents/MacOS/Meow --selftest --unit-only
+```
+
+检查覆盖中文协议、动作、贴墙、记忆、热点、备忘录和信箱。使用临时数据与模拟模型；信箱另使用临时身份，在本机回环地址进行真实 QUIC 收发，不访问公网中继或用户钥匙串。
+
+单元测试与实窗检查：
+
+```sh
+# 直接使用包管理器前，先准备通信依赖
+python3 scripts/prepare_iroh.py
+KOKOSUKI_CLOUD_ONLY=1 swift test --scratch-path .build-cloud
+
+# 原生窗口、造型和点击区域检查，截图输出到指定目录
+build/Meow.app/Contents/MacOS/Meow --wall-render-check /tmp/meow-wall-preview
+build/Meow.app/Contents/MacOS/Meow --memo-render-check /tmp/meow-memo-preview
+build/Meow.app/Contents/MacOS/Meow --mailbox-render-check /tmp/meow-mailbox-preview
+```
+
+单元测试需要包含测试框架的 Xcode 环境。未附加 `--unit-only` 的模型自检以及 `--scenarios` 会使用已保存的模型配置，云端模式下会产生真实请求。
+
+本机信箱自检不能代替两台 Mac 的实际跨网络测试。构建工具链、证书和另一台设备的排错步骤见 [另一台 Mac 测试指南](docs/SECOND_MAC.md)。
+
+## 上传与另一台设备使用
+
+提交源码、测试、脚本、文档和根目录的 `Package.resolved`。构建缓存、`build/`、`vendor/`、模型权重、凭据和本机数据副本已加入忽略规则。
+
+`vendor/` 中的 mem0、Mochi 和热点参考项目不参与运行；iroh-ffi 是构建依赖，由打包脚本自动准备。首次上传或新增模块时，需将未跟踪的新文件一并加入提交。
+
+完整流程见 [上传 Git 与另一台 Mac 测试](docs/SECOND_MAC.md)。
+
+## 致谢与许可
+
+本项目基于 [Kokosuki](https://github.com/Fangyuan025/Kokosuki) 继续开发，使用 MLX Swift 进行本地推理，使用 iroh-ffi 实现设备通信，并参考 mem0、Mochi 等项目的记忆与提醒设计。
+
+项目遵循 [MIT 许可证](LICENSE)。第三方依赖和模型遵循各自的许可证；发布包含模型的应用时，还需保留相应许可信息。
