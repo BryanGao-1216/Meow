@@ -1,9 +1,50 @@
+# macOS 与编辑器的本机文件
 .DS_Store
-.build/
-build/
 *.xcodeproj
 xcuserdata/
+*.xcuserstate
+.idea/
+*.swp
+*.swo
+*~
 
-# Model weights are downloaded locally, never committed (see model/README.md)
-model/*
-!model/README.md
+# 编译缓存、应用包、测试截图和临时下载；保留根目录 Package.resolved
+/.build/
+/.build-*/
+/build/
+/.swiftpm/
+/DerivedData/
+__pycache__/
+*.py[cod]
+*.log
+*.dSYM/
+
+# 本机凭据与签名材料；可提交不含真实值的环境变量示例
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.keychain
+*.keychain-db
+*.p12
+*.pfx
+*.pem
+*.key
+*.mobileprovision
+
+# 主人数据的本机副本。应用正常将这些文件保存在 Application Support 中。
+/local-data/
+/backups/
+/chat-history.json
+/pet-state.json
+/pet-memory.json
+/weibo-news.json
+/meow-memos.json
+/meow-mailbox.json
+
+# 参考项目不提交；构建脚本会自动准备固定版本的 iroh-ffi
+/vendor/
+
+# 本地模型文件另行下载（见 model/README.md）；云端版无需模型权重
+/model/*
+!/model/README.md

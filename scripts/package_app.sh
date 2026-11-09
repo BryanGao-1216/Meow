@@ -1,35 +1,58 @@
 #!/bin/bash
-# Assemble the single-file Kokosuki.app bundle: binary + MLX metallib + model weights + icon.
+# 打包 Meow：可执行文件、可选本地模型和图标。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP="$ROOT/build/Kokosuki.app"
+APP_NAME="Meow"
+APP="$ROOT/build/$APP_NAME.app"
 BIN="$ROOT/.build/release/Kokosuki"
+CLOUD_ONLY=0
+if [[ "${1:-}" == "--cloud-only" ]]; then
+  CLOUD_ONLY=1
+elif [[ $# -gt 0 ]]; then
+  echo "usage: $0 [--cloud-only]" >&2
+  exit 1
+fi
 
 echo "==> swift build"
-swift build -c release --package-path "$ROOT" >/dev/null
+python3 "$ROOT/scripts/prepare_iroh.py"
+if [[ "$CLOUD_ONLY" == "1" ]]; then
+  KOKOSUKI_CLOUD_ONLY=1 swift build -c release --package-path "$ROOT" --scratch-path "$ROOT/.build-cloud" >/dev/null
+  BIN="$ROOT/.build-cloud/release/Kokosuki"
+else
+  swift build -c release --package-path "$ROOT" >/dev/null
+fi
+BIN_DIR="$(dirname "$BIN")"
 
-echo "==> metallib"
-"$ROOT/scripts/build_metallib.sh" "$ROOT/.build/release" >/dev/null
+if [[ "$CLOUD_ONLY" == "0" ]]; then
+  echo "==> metallib"
+  "$ROOT/scripts/build_metallib.sh" "$ROOT/.build/release" >/dev/null
+fi
 
 echo "==> assembling bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/Resources/ThirdPartyLicenses"
+cp "$ROOT/vendor/iroh-ffi/LICENSE-MIT" "$APP/Contents/Resources/ThirdPartyLicenses/iroh-ffi-MIT.txt"
 
-cp "$BIN" "$APP/Contents/MacOS/Kokosuki"
+cp "$BIN" "$APP/Contents/MacOS/$APP_NAME"
 # MLX looks for a colocated mlx.metallib next to the executable
-cp "$ROOT/.build/release/mlx.metallib" "$APP/Contents/MacOS/mlx.metallib"
+if [[ "$CLOUD_ONLY" == "0" ]]; then
+  cp "$BIN_DIR/mlx.metallib" "$APP/Contents/MacOS/mlx.metallib"
+fi
 # SwiftPM resource bundles (swift-transformers fallback configs)
-for b in "$ROOT/.build/release/"*.bundle; do
+for b in "$BIN_DIR/"*.bundle; do
   [ -d "$b" ] && cp -R "$b" "$APP/Contents/Resources/" || true
 done
 
-echo "==> model weights"
-mkdir -p "$APP/Contents/Resources/model"
-for f in config.json generation_config.json model.safetensors model.safetensors.index.json \
-         tokenizer.json tokenizer_config.json chat_template.jinja; do
-  cp "$ROOT/model/$f" "$APP/Contents/Resources/model/"
-done
+if [[ "$CLOUD_ONLY" == "0" ]]; then
+  echo "==> model weights"
+  mkdir -p "$APP/Contents/Resources/model"
+  for f in config.json generation_config.json model.safetensors model.safetensors.index.json \
+           tokenizer.json tokenizer_config.json chat_template.jinja; do
+    cp "$ROOT/model/$f" "$APP/Contents/Resources/model/"
+  done
+fi
 
 echo "==> icon"
 ICONDIR="$ROOT/build/icon.iconset"
@@ -43,22 +66,24 @@ for s in 16 32 64 128 256 512; do
 done
 iconutil -c icns "$ICONDIR" -o "$APP/Contents/Resources/AppIcon.icns"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDevelopmentRegion</key><string>en</string>
-    <key>CFBundleExecutable</key><string>Kokosuki</string>
+    <key>CFBundleDevelopmentRegion</key><string>zh-Hans</string>
+    <key>CFBundleLocalizations</key><array><string>zh-Hans</string></array>
+    <key>CFBundleExecutable</key><string>$APP_NAME</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleIdentifier</key><string>com.kokosuki.pet</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-    <key>CFBundleName</key><string>Kokosuki</string>
-    <key>CFBundleDisplayName</key><string>Kokosuki</string>
+    <key>CFBundleName</key><string>$APP_NAME</string>
+    <key>CFBundleDisplayName</key><string>$APP_NAME</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>1.0</string>
     <key>CFBundleVersion</key><string>1</string>
-    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>LSMinimumSystemVersion</key><string>14.5</string>
+    <key>NSLocalNetworkUsageDescription</key><string>喵喵信箱需要连接已绑定的另一台 Mac，用来寄送和接收文本信件。</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
@@ -70,6 +95,9 @@ printf 'APPL????' > "$APP/Contents/PkgInfo"
 
 echo "==> codesign (ad-hoc)"
 codesign --force --deep -s - "$APP"
+
+# 移除旧名称的构建产物，避免再次打开旧版；用户数据另存于 Application Support。
+rm -rf "$ROOT/build/Kokosuki.app" "$ROOT/build/高小喵.app"
 
 du -sh "$APP"
 echo "done: $APP"

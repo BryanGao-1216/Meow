@@ -32,7 +32,7 @@ Task {
         let loadTime = clock.now - t0
         FileHandle.standardError.write("[load: \(loadTime)]\n".data(using: .utf8)!)
 
-        let system = args.count >= 4 ? args[3] : "你是Kokosuki,一只可爱的桌面宠物小猫。用简短活泼的话回复。"
+        let system = args.count >= 4 ? args[3] : "你是高小喵,一只可爱的桌面宠物小猫。用简短活泼的话回复。"
         let prompt = buildPrompt(system: system, user: userPrompt)
 
         try await container.perform { (context: ModelContext) in

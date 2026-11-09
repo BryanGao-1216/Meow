@@ -1,8 +1,42 @@
-// Kokosuki — a fully offline desktop kitten with a local LLM mind.
+// 高小喵：支持本地模型与云端对话的桌面小猫。
 import AppKit
 
 MainActor.assumeIsolated {
     let cliArgs = CommandLine.arguments
+    if cliArgs.contains("--mailbox-check") {
+        Task { exit(await MailboxSelfTest.run() == 0 ? 0 : 1) }
+        RunLoop.main.run()
+    }
+    if let i = cliArgs.firstIndex(of: "--mailbox-render-check"), i + 1 < cliArgs.count {
+        let app = NSApplication.shared
+        Task { exit(await MailboxPreview.render(outDir: cliArgs[i + 1]) == 0 ? 0 : 1) }
+        app.run()
+        exit(0)
+    }
+    if let i = cliArgs.firstIndex(of: "--memo-render-check"), i + 1 < cliArgs.count {
+        let app = NSApplication.shared
+        Task { exit(await MemoPreview.render(outDir: cliArgs[i + 1]) == 0 ? 0 : 1) }
+        app.run()
+        exit(0)
+    }
+    if let i = cliArgs.firstIndex(of: "--wall-render-check"), i + 1 < cliArgs.count {
+        let app = NSApplication.shared
+        Task { exit(await WallRenderSelfTest.run(outDir: cliArgs[i + 1]) == 0 ? 0 : 1) }
+        app.run()
+        exit(0)
+    }
+    if cliArgs.contains("--news-preview") {
+        Snapshot.newsPreview()
+        exit(0)
+    }
+    if cliArgs.contains("--news-check") {
+        Task { await NewsSelfTest.probe() }
+        RunLoop.main.run()
+    }
+    if cliArgs.contains("--memory-preview") {
+        Snapshot.memoryPreview()
+        exit(0)
+    }
     if let i = cliArgs.firstIndex(of: "--snapshot"), i + 1 < cliArgs.count {
         Snapshot.run(outDir: cliArgs[i + 1])
         exit(0)
