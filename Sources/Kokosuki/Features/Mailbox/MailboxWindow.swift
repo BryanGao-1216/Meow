@@ -30,6 +30,7 @@ struct MailboxView: View {
                 Text(mailbox.book.peer?.name ?? "尚未绑定设备").font(.callout).lineLimit(1)
                 Button("设备绑定") { binding = true }
             }.font(.callout)
+            Text("本机：\(mailbox.localDeviceName)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
             HStack(alignment: .top) {
                 Text(mailbox.status).font(.caption).foregroundStyle(.secondary).textSelection(.enabled).lineLimit(3)
                 Spacer()
@@ -135,19 +136,26 @@ struct MailboxView: View {
 struct MailBindingView: View {
     @ObservedObject var mailbox: MailboxController
     @Environment(\.dismiss) private var dismiss
-    @State private var code = ""
-    @State private var name = "另一台 Mac 的小喵"
     @State private var error = ""
     @State private var busy = false
     @State private var unbinding = false
     @State private var copied = false
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack { Text("绑定另一台 Meow").font(.title3.bold()); Spacer(); Button("完成") { dismiss() } }
+            HStack {
+                Text("绑定另一台 Meow").font(.title3.bold()); Spacer()
+                Button("完成") {
+                    do { try mailbox.flushBindingDraft(); dismiss() }
+                    catch { self.error = error.localizedDescription }
+                }.disabled(busy)
+            }
             Text("1. 两台 Mac 都启用信箱。\n2. 复制各自的设备码，发给对方。\n3. 两边各粘贴一次对方的设备码并绑定。")
                 .font(.callout).lineSpacing(5)
+            Text("本机设备名称（仅本机显示）").font(.subheadline.bold())
+            TextField("给这台 Mac 的小喵起个名字", text: Binding(get: { mailbox.bindingDraft.localName }, set: { mailbox.updateBindingDraft(localName: $0) }))
+                .textFieldStyle(.roundedBorder).disabled(busy)
             HStack {
-                Text("本机设备：\(mailbox.book.localDeviceID.map { String($0.prefix(12)) } ?? "等待启用")").font(.callout.monospaced())
+                Text("固定设备编号：\(mailbox.book.localDeviceID.map { String($0.prefix(12)) } ?? "等待启用")").font(.callout.monospaced())
                 Spacer()
                 Button(copied ? "已复制" : "复制本机设备码") {
                     NSPasteboard.general.clearContents(); NSPasteboard.general.setString(mailbox.deviceCode, forType: .string); copied = true
@@ -156,32 +164,38 @@ struct MailBindingView: View {
             if let peer = mailbox.book.peer {
                 Text("已绑定：\(peer.name) · \(String(peer.deviceID.prefix(12)))").font(.callout).textSelection(.enabled)
             }
-            TextField("对方的名字（仅本机备注）", text: $name).textFieldStyle(.roundedBorder)
+            TextField("对方设备备注（仅本机显示）", text: Binding(get: { mailbox.bindingDraft.peerName }, set: { mailbox.updateBindingDraft(peerName: $0) }))
+                .textFieldStyle(.roundedBorder).disabled(busy)
             Text("粘贴对方完整的设备码").font(.subheadline.bold())
-            TextEditor(text: $code).font(.system(size: 11, design: .monospaced)).frame(height: 80)
+            TextEditor(text: Binding(get: { mailbox.bindingDraft.peerCode }, set: { mailbox.updateBindingDraft(peerCode: $0) }))
+                .font(.system(size: 11, design: .monospaced)).frame(height: 80).disabled(busy)
                 .overlay(RoundedRectangle(cornerRadius: 5).stroke(.gray.opacity(0.25)))
-            if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled) }
+            if let detail = mailbox.bindingError ?? (error.isEmpty ? nil : error) {
+                Text(detail).font(.caption).foregroundStyle(.red).textSelection(.enabled)
+            }
             HStack {
-                if mailbox.book.peer != nil { Button("解除绑定", role: .destructive) { unbinding = true } }
+                if mailbox.book.peer != nil { Button("解除绑定", role: .destructive) { unbinding = true }.disabled(busy) }
                 Spacer()
                 if busy { ProgressView().controlSize(.small) }
-                Button(mailbox.book.peer == nil ? "绑定这台设备" : "更新同一设备的地址") {
+                Button(mailbox.book.peer == nil ? "绑定这台设备" : "保存对方绑定") {
                     busy = true
                     Task {
                         defer { busy = false }
-                        do { try await mailbox.bind(code: code, name: name); dismiss() }
+                        do { try await mailbox.bind(code: mailbox.bindingDraft.peerCode, name: mailbox.bindingDraft.peerName); dismiss() }
                         catch { self.error = error.localizedDescription }
                     }
-                }.disabled(busy || code.isEmpty || !mailbox.isRunning)
+                }.disabled(busy || mailbox.bindingDraft.peerCode.isEmpty || !mailbox.isRunning)
             }
-            Text("当前只绑定一台设备。设备码包含公开连接信息，只有两边都绑定后才能互相收信；解除绑定后仍保留历史信件。")
+            Text("名称与输入草稿自动保存，点击绑定才会改变对端。固定设备码不随网络变化；两边都绑定后才能互相收信。")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }.padding(22).frame(width: 560)
-            .onAppear { if let peer = mailbox.book.peer { name = peer.name } }
+            .foregroundStyle(Color(red: 0.36, green: 0.27, blue: 0.21))
+            .background(Color(red: 1, green: 0.975, blue: 0.94))
+            .onDisappear { mailbox.persistBindingDraft() }
             .alert("解除设备绑定？", isPresented: $unbinding) {
                 Button("取消", role: .cancel) {}
                 Button("解除绑定", role: .destructive) {
-                    Task { do { try await mailbox.unbind(); code = "" } catch { self.error = error.localizedDescription } }
+                    Task { do { try await mailbox.unbind() } catch { self.error = error.localizedDescription } }
                 }
             } message: { Text("保留历史信件，停止向旧设备重试；已经传出的信可能已被对方保存。") }
     }

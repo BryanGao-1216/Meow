@@ -52,4 +52,45 @@ final class MailboxTests: XCTestCase {
         packet.version = 2
         XCTAssertThrowsError(try MailPacket.decode(packet.encoded()))
     }
+    func testDeviceCodeEncodingIsDeterministic() throws {
+        let code = MailDeviceCode(deviceID: sender, ticket: "endpoint-test")
+        let encoded = try code.encoded()
+        for _ in 0..<30 { XCTAssertEqual(try code.encoded(), encoded) }
+        XCTAssertEqual(try MailDeviceCode.decode(encoded), code)
+    }
+    func testBindingDraftAndOwnCodeSurviveRoundTrip() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("mail.json")
+        var book = receiver()
+        book.localPairingCode = try MailDeviceCode(deviceID: recipient, ticket: "endpoint-self").encoded()
+        book.bindingDraft = MailBindingDraft(localName: "书房的小喵", peerName: "对方的小喵", peerCode: "输入到一半的草稿")
+        try book.write(to: url)
+        XCTAssertEqual(try MailBook.read(from: url), book)
+        XCTAssertEqual(try MailBook.read(from: url).peer?.deviceID, sender)
+    }
+    func testLegacyStoreWithoutNewFieldsKeepsBindingAndLetters() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("old.json")
+        var book = receiver()
+        _ = try book.receive(MailLetter(senderID: sender, recipientID: recipient, body: "旧版信件", createdAt: now), authenticatedID: sender, now: now)
+        try book.write(to: url)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        json.removeValue(forKey: "bindingDraft"); json.removeValue(forKey: "localPairingCode")
+        try JSONSerialization.data(withJSONObject: json).write(to: url)
+        let restored = try MailBook.read(from: url)
+        XCTAssertEqual(restored.peer, book.peer)
+        XCTAssertEqual(restored.entries, book.entries)
+        XCTAssertNil(restored.bindingDraft)
+    }
+    func testInvalidStoredOwnCodeDoesNotChangeDeviceIdentity() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("mail.json")
+        var book = receiver()
+        book.localPairingCode = try MailDeviceCode(deviceID: sender, ticket: "endpoint-other").encoded()
+        try book.write(to: url)
+        XCTAssertThrowsError(try MailBook.read(from: url))
+    }
 }

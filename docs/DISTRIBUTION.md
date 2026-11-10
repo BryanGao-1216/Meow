@@ -20,6 +20,8 @@
 
 若希望接收者不需要上述手动例外操作，需使用 Developer ID Application 证书签署应用，再完成 Apple 公证和票据附加。只把应用改成 `.dmg` 或 `.pkg` 不会消除签名要求。签名、公证和跨设备启动应在正式发布前单独验证。
 
+已在本机安装固定签名证书时，可通过 `MEOW_CODESIGN_IDENTITY` 指定身份再打包。同一身份也有助于保持钥匙串跨版本授权；授权反复弹窗的处理见 [钥匙串说明](KEYCHAIN.md)。
+
 ## 给发布者：一键生成
 
 在具备正常开发工具的 Mac 上执行：
@@ -62,9 +64,9 @@ build/Meow-<版本>-macOS-arm64.dmg.sha256
 生成安装包后，可检查映像和校验值：
 
 ```sh
-hdiutil verify build/Meow-1.0-macOS-arm64.dmg
+hdiutil verify build/Meow-1.0.2-macOS-arm64.dmg
 cd build
-shasum -a 256 -c Meow-1.0-macOS-arm64.dmg.sha256
+shasum -a 256 -c Meow-1.0.2-macOS-arm64.dmg.sha256
 ```
 
 文件名中的版本号应与实际生成的包一致。也应挂载映像、复制应用到其他目录，检查签名并运行 `--selftest --unit-only`。自检使用临时数据，不请求真实模型。

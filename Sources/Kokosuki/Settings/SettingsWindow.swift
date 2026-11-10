@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var connectionStatus = ""
     @State private var testing = false
     @State private var testTask: Task<Void, Never>?
+    @State private var credentialReadFailed = false
 
     init(settings: AppSettings, onResetStats: @escaping () -> Void,
          onApplyBrainSettings: @escaping () -> Void, onOpenMemory: @escaping () -> Void = {},
@@ -48,10 +49,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollView { settingsContent }
             .frame(width: 410, height: 660)
-            .onAppear {
-                do { apiKey = try APIKeyStore.load() }
-                catch { connectionStatus = error.localizedDescription }
-            }
+            .onAppear { loadCredential() }
             .onDisappear { testTask?.cancel() }
     }
 
@@ -211,6 +209,24 @@ struct SettingsView: View {
                     .foregroundStyle(cocoa).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if credentialReadFailed {
+                Button("重新授权钥匙串") { loadCredential(retry: true) }
+                    .controlSize(.small).disabled(testing)
+                Text("取消后不会自动重试。授权窗口中输入 Mac 登录密码并选择‘始终允许’，可让当前版本记住授权；也可重新填写密钥后保存。")
+                    .font(.system(size: 10.5)).foregroundStyle(cocoa.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func loadCredential(retry: Bool = false) {
+        do {
+            apiKey = try APIKeyStore.load(retry: retry)
+            credentialReadFailed = false
+            if retry { connectionStatus = "已读取密钥，请测试连接并保存模型设置。" }
+        } catch {
+            credentialReadFailed = true
+            connectionStatus = error.localizedDescription
         }
     }
 
@@ -223,6 +239,7 @@ struct SettingsView: View {
             if provider == .volcengine {
                 _ = try configuration().endpoint()
                 try APIKeyStore.save(apiKey)
+                credentialReadFailed = false
             }
             settings.cloudBaseURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
             settings.cloudModel = model.trimmingCharacters(in: .whitespacesAndNewlines)

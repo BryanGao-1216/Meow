@@ -3,6 +3,9 @@ import AppKit
 
 MainActor.assumeIsolated {
     let cliArgs = CommandLine.arguments
+    if cliArgs.contains("--credentials-check") {
+        exit(CredentialSelfTest.run() == 0 ? 0 : 1)
+    }
     if cliArgs.contains("--mailbox-check") {
         Task { exit(await MailboxSelfTest.run() == 0 ? 0 : 1) }
         RunLoop.main.run()
@@ -65,6 +68,7 @@ MainActor.assumeIsolated {
         exit(0)
     }
 
+    if AppInstance.activateExistingIfNeeded() { exit(0) }
     let app = NSApplication.shared
     let delegate = AppDelegate()
     app.delegate = delegate

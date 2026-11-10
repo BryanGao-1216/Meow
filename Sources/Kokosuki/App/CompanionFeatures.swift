@@ -49,7 +49,8 @@ final class CompanionFeatures {
             persona: { [weak engine] in engine.map { Persona.system($0.currentContext()) } ?? "你是高小喵，用中文提醒主人。" },
             preferences: { [weak brain] in brain?.memory.newsPreferenceStatements ?? [] }))
         mailbox = MailboxController(transport: IrohMailTransport())
-        mailbox.onUnreadChange = { [weak engine] count in engine?.core.unreadLetters = count }
+        mailbox.onUnreadChange = { [weak engine] count in engine?.updateUnreadLetters(count) }
+        mailbox.onNewLetter = { [weak engine] in engine?.receivedLetter() }
         engine.conversationTools = ConversationToolRouter([memos])
         engine.hasPriorityNotice = { [weak memos] in memos?.hasDue == true }
         brain.newsContext = { [weak news] query in news?.followupContext(for: query) ?? "" }

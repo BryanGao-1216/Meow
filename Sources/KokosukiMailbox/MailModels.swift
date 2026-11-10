@@ -70,7 +70,8 @@ public struct MailDeviceCode: Codable, Equatable, Sendable {
         value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
     }
     public func encoded() throws -> String {
-        let data = try JSONEncoder().encode(self)
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let data = try encoder.encode(self)
         return "meow1:" + data.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
     public static func decode(_ value: String) throws -> MailDeviceCode {
@@ -86,10 +87,28 @@ public struct MailDeviceCode: Codable, Equatable, Sendable {
     }
 }
 
+/// 输入草稿与实际绑定分开保存；草稿不会自动改变可信对端。
+public struct MailBindingDraft: Codable, Equatable, Sendable {
+    public var localName: String
+    public var peerName: String
+    public var peerCode: String
+    public init(localName: String = "这台 Mac 的小喵", peerName: String = "另一台 Mac 的小喵", peerCode: String = "") {
+        self.localName = localName; self.peerName = peerName; self.peerCode = peerCode
+    }
+    public func validate() throws {
+        guard localName.count <= 40, peerName.count <= 40, peerCode.utf8.count <= 14000,
+              !localName.contains("\n"), !peerName.contains("\n") else {
+            throw MailError.invalid("设备名称最多 40 字，设备码最多 14000 字节，请检查输入。")
+        }
+    }
+}
+
 public struct MailBook: Codable, Equatable {
     public var schema = 1
     public var enabled = false
     public var localDeviceID: String?
+    public var localPairingCode: String?
+    public var bindingDraft: MailBindingDraft?
     public var peer: MailPeer?
     public var entries: [MailEntry] = []
     /// 即使主人删除了信，丢失回执后的重试也不应使它再次出现在收信箱。
@@ -109,6 +128,12 @@ public struct MailBook: Codable, Equatable {
             throw MailError.invalid("信箱格式不受支持，已保留原文件。")
         }
         for entry in book.entries { try entry.letter.validate() }
+        try book.bindingDraft?.validate()
+        if let code = book.localPairingCode {
+            guard try MailDeviceCode.decode(code).deviceID == book.localDeviceID else {
+                throw MailError.invalid("保存的本机设备码与设备身份不一致，已保留原文件。")
+            }
+        }
         return book
     }
     public func write(to url: URL) throws {

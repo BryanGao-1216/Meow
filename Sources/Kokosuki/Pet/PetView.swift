@@ -25,7 +25,7 @@ enum PetLayout {
 
     /// 与怀中信件共用的设计坐标；返回画布左上原点的命中区域。
     static func letterHitRect(size: CGSize, wallSide: WallSide?, reveal: Double) -> CGRect {
-        let rect = CGRect(x: 65, y: 114, width: 70, height: 47)
+        let rect = HeldLetter.hitBounds
         guard let side = wallSide else {
             let k = size.width / designSide
             return CGRect(x: rect.minX * k, y: rect.minY * k, width: rect.width * k, height: rect.height * k)
@@ -221,17 +221,29 @@ struct PetPainter {
 
     private func drawHeldLetter(_ ctx: inout GraphicsContext) {
         guard s.unreadLetters > 0 else { return }
-        ctx.draw(Text("💌").font(.system(size: 32)), at: CGPoint(x: 100, y: 138))
+        let motion = HeldLetter.transform(at: t, wallSide: s.wallSide, sleeping: s.isSleeping)
+        // 前臂连着身体，前爪和信一起抬起，不让信封或爪子漂在半空。
+        for x: CGFloat in [82.5, 117.5] {
+            let grip = CGPoint(x: x, y: 145).applying(motion)
+            var arm = Path()
+            arm.move(to: CGPoint(x: x, y: 153))
+            arm.addQuadCurve(to: grip, control: CGPoint(x: x + (x < 100 ? -3 : 3), y: grip.y + 8))
+            ctx.stroke(arm, with: line, style: .init(lineWidth: 13, lineCap: .round))
+            ctx.stroke(arm, with: .color(Self.cream), style: .init(lineWidth: 9, lineCap: .round))
+        }
+        var held = ctx
+        held.concatenate(motion)
+        held.draw(Text("💌").font(.system(size: 32)), at: CGPoint(x: 100, y: 138))
         for x: CGFloat in [76, 111] {
             let paw = Path(roundedRect: CGRect(x: x, y: 134, width: 13, height: 17), cornerRadius: 6)
-            ctx.fill(paw, with: .color(Self.cream)); ctx.stroke(paw, with: line, style: .init(lineWidth: 2.1))
+            held.fill(paw, with: .color(Self.cream)); held.stroke(paw, with: line, style: .init(lineWidth: 2.1))
             var crease = Path(); crease.move(to: CGPoint(x: x + 5, y: 139)); crease.addLine(to: CGPoint(x: x + 5, y: 146))
-            ctx.stroke(crease, with: .color(Self.cocoa.opacity(0.5)), style: .init(lineWidth: 1.3, lineCap: .round))
+            held.stroke(crease, with: .color(Self.cocoa.opacity(0.5)), style: .init(lineWidth: 1.3, lineCap: .round))
         }
         let count = s.unreadLetters > 99 ? "99+" : String(s.unreadLetters)
         let badge = CGRect(x: 116, y: 115, width: s.unreadLetters > 99 ? 24 : 17, height: 17)
-        ctx.fill(Path(roundedRect: badge, cornerRadius: 8.5), with: .color(Self.deepPink))
-        ctx.draw(Text(count).font(.system(size: 9, weight: .bold)).foregroundStyle(.white), at: CGPoint(x: badge.midX, y: badge.midY))
+        held.fill(Path(roundedRect: badge, cornerRadius: 8.5), with: .color(Self.deepPink))
+        held.draw(Text(count).font(.system(size: 9, weight: .bold)).foregroundStyle(.white), at: CGPoint(x: badge.midX, y: badge.midY))
     }
 
     private func drawShadow(_ ctx: inout GraphicsContext, lifted: Bool) {

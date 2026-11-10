@@ -78,6 +78,15 @@ enum MailboxSelfTest {
             check(await waitUntil { offline.isRunning }, "假传输启动不读取真实钥匙串")
             let other = try MailDeviceCode(deviceID: bID, ticket: "endpoint-preview").encoded()
             try await offline.bind(code: other, name: "离线测试小喵")
+            offline.updateBindingDraft(localName: "书房的小喵", peerName: "尚未提交的备注", peerCode: "输入到一半的设备码")
+            check(await waitUntil { (try? MailBook.read(from: offline.fileURL).bindingDraft?.localName) == "书房的小喵" }, "本机名称和输入草稿自动保存")
+            let reopened = MailboxController(storageURL: offline.fileURL, transport: OfflineMailTransport(), key: { Data(repeating: 1, count: 32) })
+            check(reopened.bindingDraft == offline.bindingDraft && reopened.deviceCode == offline.deviceCode,
+                  "关闭绑定窗口或重启后恢复本机名、对方备注、输入码和自己的设备码")
+            check(reopened.book.peer?.deviceID == bID && reopened.book.peer?.name == "离线测试小喵", "修改草稿不会更改实际可信对端")
+            reopened.shutdown()
+            offline.updateBindingDraft(peerName: "离线测试小喵", peerCode: other)
+            try offline.flushBindingDraft()
             let id = try offline.compose("对方不在线也先保存这封信")
             _ = await waitUntil { !offline.isSending }
             check(offline.book.entries.first?.delivery == .queued && offline.book.entries.first?.lastError != nil, "离线发送不谎报送达，信留在待寄箱")
@@ -91,6 +100,9 @@ enum MailboxSelfTest {
             try offline.setEnabled(false)
             try offline.setEnabled(true)
             check(await waitUntil { offline.isRunning }, "关闭再启用恢复监听和调度")
+            offline.updateBindingDraft(localName: "关窗后的小喵")
+            offline.shutdown()
+            check((try MailBook.read(from: offline.fileURL)).bindingDraft?.localName == "关窗后的小喵", "退出时立即保存尚在防抖等待中的输入")
             try FileManager.default.removeItem(at: offline.fileURL)
             try FileManager.default.createDirectory(at: offline.fileURL, withIntermediateDirectories: false)
             do { try offline.setEnabled(false); check(false, "存储故障时也能停止通信") }
@@ -102,7 +114,9 @@ enum MailboxSelfTest {
         let aTransport = IrohMailTransport(localOnly: true), bTransport = IrohMailTransport(localOnly: true)
         let a = MailboxController(storageURL: root.appendingPathComponent("a.json"), transport: aTransport, key: { Data(repeating: 7, count: 32) }, now: { now })
         let b = MailboxController(storageURL: root.appendingPathComponent("b.json"), transport: bTransport, key: { Data(repeating: 8, count: 32) }, now: { now })
-        var shownUnread = 0; b.onUnreadChange = { shownUnread = $0 }
+        var shownUnread = 0, arrivals = 0
+        b.onUnreadChange = { shownUnread = $0 }
+        b.onNewLetter = { arrivals += 1 }
         do {
             try a.setEnabled(true); try b.setEnabled(true)
             guard await waitUntil({ a.isRunning && b.isRunning }) else { throw MailError.invalid("本机 QUIC 端点未能启动") }
@@ -111,11 +125,16 @@ enum MailboxSelfTest {
             try await a.bind(code: b.deviceCode, name: "测试乙")
             try await b.bind(code: a.deviceCode, name: "测试甲")
             check(a.book.peer?.deviceID == b.book.localDeviceID && b.book.peer?.deviceID == a.book.localDeviceID, "设备码验证真实公钥并完成双向固定绑定")
+            let fixedCode = try IrohMailTransport.pairingCode(deviceID: a.book.localDeviceID!).encoded()
+            check(try IrohMailTransport.pairingCode(deviceID: a.book.localDeviceID!).encoded() == fixedCode, "公开配对码仅由固定身份生成，不包含临时端口")
+            let fixedPeer = try await bTransport.validatePeerCode(fixedCode)
+            check(fixedPeer.deviceID == a.book.localDeviceID, "固定配对码仍可被原版本票据格式解析和认证")
             let body = "给另一只小喵：\n这是一封真实通过 QUIC 传输的文本信 💌"
             let id = try a.compose(body)
             check(await waitUntil { a.book.entries.first(where: { $0.id == id })?.delivery == .delivered && b.book.unreadCount == 1 }, "真实 QUIC 信件收到保存回执才标记送达")
             check(b.book.entries.first?.letter.body == body && shownUnread == 1, "收信原文保存，并同步小猫的未读提示")
             check((try MailBook.read(from: b.fileURL)).entries.count == 1, "回执发出时来信已经落盘")
+            check(arrivals == 1, "新信保存后只发出一次报信事件")
             b.selectFirstUnread()
             check(b.selected?.letter.body == body && b.book.unreadCount == 0 && shownUnread == 0 && b.book.entries.count == 1,
                   "点击展开后消除未读，原文继续保留")
@@ -123,6 +142,9 @@ enum MailboxSelfTest {
                 let duplicate = try await aTransport.send(original)
                 check(duplicate.matches(original) && b.book.entries.count == 1 && b.book.unreadCount == 0, "真实 QUIC 重传获得相同回执，信箱无重复信")
             }
+            b.updateBindingDraft(localName: "收件测试小喵"); try b.flushBindingDraft()
+            b.reloadStorage()
+            check(arrivals == 1, "重复投递、读信、编辑名称和恢复历史都不重复报信")
 
             // 将测试文件替换成目录，模拟收件方写入失败；不能回假成功的 ACK。
             let snapshot = b.book
@@ -132,10 +154,12 @@ enum MailboxSelfTest {
             _ = await waitUntil { !a.isSending }
             check(a.book.entries.first(where: { $0.id == second })?.delivery == .queued && b.book.entries.count == 1,
                   "真实接收落盘失败时拒发成功回执，发送方保留待寄")
+            check(arrivals == 1, "保存失败不报假来信")
             try FileManager.default.removeItem(at: b.fileURL); try snapshot.write(to: b.fileURL); b.reloadStorage()
             try a.retry(second)
             check(await waitUntil { a.book.entries.first(where: { $0.id == second })?.delivery == .delivered && b.book.entries.count == 2 },
                   "接收存储恢复后，原编号重试并成功送达一次")
+            check(arrivals == 2, "保存恢复后同编号重试成功，才补报一次新信")
 
             let stranger = IrohMailTransport(localOnly: true)
             let strangerCode = try await stranger.start(secretKey: Data(repeating: 9, count: 32)) { letter, _ in MailReceipt(letter: letter, receivedAt: now) }
@@ -147,6 +171,16 @@ enum MailboxSelfTest {
             check(a.book.peer == nil && a.book.entries.count == 2, "真实端点解绑保留信件历史")
         } catch { check(false, "真实 QUIC 收发：\(error.localizedDescription)") }
         a.shutdown(); b.shutdown(); await aTransport.stop(); await bTransport.stop()
+
+        let legacyURL = root.appendingPathComponent("legacy.json")
+        do {
+            var legacy = MailBook(); legacy.localDeviceID = aID; legacy.peer = MailPeer(deviceID: bID, ticket: "endpoint-old", name: "旧备注")
+            try legacy.write(to: legacyURL)
+            let restored = MailboxController(storageURL: legacyURL, transport: OfflineMailTransport(), key: { Data(repeating: 1, count: 32) })
+            check(try restored.bindingDraft.peerName == "旧备注" && MailDeviceCode.decode(restored.bindingDraft.peerCode).deviceID == bID,
+                  "旧版信箱自动回显已有备注和设备码，不要求重新绑定")
+            restored.shutdown()
+        } catch { check(false, "兼容旧信箱：\(error.localizedDescription)") }
 
         let corrupt = root.appendingPathComponent("corrupt.json")
         try? Data("broken".utf8).write(to: corrupt)
@@ -166,6 +200,6 @@ enum MailboxSelfTest {
         for step in 91...180 { engine.tick(at: clock.addingTimeInterval(Double(step) / 60)) }
         check(core.wallReveal < 0.001 && engine.wallAttachment == attached, "读完信且鼠标已离开后平滑缩回")
         print("mailbox: \(checks - failures)/\(checks) OK（临时数据、真实本机 iroh QUIC、无公网与 LLM 请求）")
-        return failures
+        return failures + MailPresentationSelfTest.run()
     }
 }

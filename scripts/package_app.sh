@@ -4,6 +4,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="Meow"
+APP_VERSION="${MEOW_VERSION:-1.0.3}"
+APP_BUILD="${MEOW_BUILD_NUMBER:-4}"
+SIGNING_IDENTITY="${MEOW_CODESIGN_IDENTITY:--}"
+[[ "$APP_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "版本号无效" >&2; exit 1; }
+[[ "$APP_BUILD" =~ ^[0-9]+$ ]] || { echo "构建号无效" >&2; exit 1; }
 APP="$ROOT/build/$APP_NAME.app"
 BIN="$ROOT/.build/release/Kokosuki"
 CLOUD_ONLY=0
@@ -80,8 +85,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleName</key><string>$APP_NAME</string>
     <key>CFBundleDisplayName</key><string>$APP_NAME</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.0</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>$APP_VERSION</string>
+    <key>CFBundleVersion</key><string>$APP_BUILD</string>
     <key>LSMinimumSystemVersion</key><string>14.5</string>
     <key>NSLocalNetworkUsageDescription</key><string>喵喵信箱需要连接已绑定的另一台 Mac，用来寄送和接收文本信件。</string>
     <key>LSUIElement</key><true/>
@@ -93,8 +98,14 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-echo "==> codesign (ad-hoc)"
-codesign --force --deep -s - "$APP"
+if [[ "$SIGNING_IDENTITY" == "-" ]]; then
+  echo "==> 本机签名（更新二进制后，钥匙串可能需要重新授权）"
+  codesign --force --deep -s - "$APP"
+else
+  echo "==> 使用指定身份签名"
+  codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$APP"
+fi
+codesign --verify --deep --strict "$APP"
 
 # 移除旧名称的构建产物，避免再次打开旧版；用户数据另存于 Application Support。
 rm -rf "$ROOT/build/Kokosuki.app" "$ROOT/build/高小喵.app"

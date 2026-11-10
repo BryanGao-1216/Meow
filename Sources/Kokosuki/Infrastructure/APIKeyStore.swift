@@ -1,21 +1,32 @@
 import Foundation
 import Security
 
+@MainActor
 enum APIKeyStore {
     private static let query: [String: Any] = [
         kSecClass as String: kSecClassGenericPassword,
         kSecAttrService as String: "com.kokosuki.pet.volcengine",
         kSecAttrAccount as String: "api-key",
     ]
+    private static let session = CredentialSession<String>(read: readFromKeychain, write: writeToKeychain)
 
     struct Failure: LocalizedError {
         let status: OSStatus
         var errorDescription: String? {
-            "钥匙串：\(SecCopyErrorMessageString(status, nil) as String? ?? String(status))"
+            if [errSecUserCanceled, errSecAuthFailed, errSecInteractionNotAllowed].contains(status) {
+                return "钥匙串未授权或尚未解锁，请确认登录钥匙串的访问权限。"
+            }
+            return "钥匙串：\(SecCopyErrorMessageString(status, nil) as String? ?? String(status))"
         }
     }
 
-    static func load() throws -> String {
+    static func load(retry: Bool = false) throws -> String { try session.load(retry: retry) }
+
+    static func save(_ key: String) throws {
+        try session.save(key.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private static func readFromKeychain() throws -> String {
         var lookup = query
         lookup[kSecReturnData as String] = true
         lookup[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -29,8 +40,7 @@ enum APIKeyStore {
         return key
     }
 
-    static func save(_ key: String) throws {
-        let value = key.trimmingCharacters(in: .whitespacesAndNewlines)
+    private static func writeToKeychain(_ value: String) throws {
         if value.isEmpty {
             let status = SecItemDelete(query as CFDictionary)
             guard status == errSecSuccess || status == errSecItemNotFound else { throw Failure(status: status) }

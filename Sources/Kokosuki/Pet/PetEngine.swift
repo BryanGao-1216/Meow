@@ -66,6 +66,8 @@ final class PetEngine {
     private var lastStatsSave = Date()
     private var lastHungerNag = Date.distantPast
     private var lastSleepNag = Date.distantPast
+    private var mailArrivalPending = false
+    private var nextMailNoticeAt = Date.distantPast
 
     // interaction bookkeeping
     private var recentPokes: [Date] = []
@@ -105,16 +107,40 @@ final class PetEngine {
     }
 
     /// 由功能协调器投递已验证的提醒；引擎只负责小猫表现，不读取备忘录存储。
-    func speakProactively(_ text: String, wakeForAlarm: Bool) -> Bool {
+    func speakProactively(_ text: String, wakeForAlarm: Bool, at now: Date = Date()) -> Bool {
         guard canReceiveProactive(wakeForAlarm: wakeForAlarm) else { return false }
         if core.isSleeping { wake(grumpy: false) }
         core.setEmotion(wakeForAlarm ? .curious : .love, hold: 12)
         bubble?.show(text: text, above: bubbleAnchor, petScale: scale)
-        bubbleHideAt = Date().addingTimeInterval(bubbleDuration(for: text) + 4)
+        bubbleHideAt = now.addingTimeInterval(bubbleDuration(for: text) + 4)
         core.activity = .talk; activityEndsAt = bubbleHideAt
-        lastChatterAt = Date()
+        lastChatterAt = now
         brain.noteAssistantLine(text)
         proactiveMirror?(text)
+        return true
+    }
+
+    func updateUnreadLetters(_ count: Int) {
+        core.unreadLetters = max(0, count)
+        if core.unreadLetters == 0 { mailArrivalPending = false }
+    }
+
+    func receivedLetter() {
+        if core.unreadLetters > 0 { mailArrivalPending = true }
+    }
+
+    /// 等聊天、动作和到点提醒结束再报信；短时间多封来信合并，读完即取消待报信。
+    @discardableResult
+    func deliverPendingMailArrival(at now: Date = Date()) -> Bool {
+        guard mailArrivalPending, core.unreadLetters > 0, now >= nextMailNoticeAt,
+              !hasPriorityNotice(), core.wallSide == nil || core.wallReveal >= 0.95 else { return false }
+        let line = core.unreadLetters == 1
+            ? "主人，来信啦！快点我举着的 💌 拆开看看喵～"
+            : "主人，来信啦！还有 \(core.unreadLetters) 封没拆，点我举着的 💌 看看喵～"
+        guard speakProactively(line, wakeForAlarm: false, at: now) else { return false }
+        core.setEmotion(.excited, hold: 12)
+        mailArrivalPending = false
+        nextMailNoticeAt = now.addingTimeInterval(30)
         return true
     }
 
@@ -298,10 +324,11 @@ final class PetEngine {
         updateWallPosition()
         updatePhysics(dt)
         updateActivity(now, dt)
+        updateBubble(now)
+        deliverPendingMailArrival(at: now)
         updateAutonomy(now)
         updateFace(now, dt)
         updateParticles(dt)
-        updateBubble(now)
         updateChatter(now)
 
         if now.timeIntervalSince(lastStatsSave) > 60 {

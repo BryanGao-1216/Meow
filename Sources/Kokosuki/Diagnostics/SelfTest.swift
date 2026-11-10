@@ -13,6 +13,7 @@ enum SelfTest {
         unitFails += runDetectionCases()
         unitFails += runSanitizerCases()
         unitFails += runChineseContentCases()
+        unitFails += CredentialSelfTest.run()
         unitFails += ActionSelfTest.run()
         unitFails += WallSelfTest.run()
         unitFails += WallHoverSelfTest.run()

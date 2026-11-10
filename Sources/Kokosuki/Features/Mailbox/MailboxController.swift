@@ -12,7 +12,11 @@ final class MailboxController: ObservableObject {
     @Published private(set) var isStarting = false
     @Published private(set) var isSending = false
     @Published private(set) var selectedLetterID: UUID?
+    @Published private(set) var bindingDraft = MailBindingDraft()
+    @Published private(set) var bindingError: String?
     var onUnreadChange: ((Int) -> Void)?
+    /// 仅在新信成功保存后触发；恢复历史、标记已读和重复投递都不算新信。
+    var onNewLetter: (() -> Void)?
     private let transport: any MailTransport
     private let url: URL
     private let key: () throws -> Data
@@ -25,6 +29,8 @@ final class MailboxController: ObservableObject {
     private var sendToken: UUID?
     private var generation = 0
     private var nextStart = Date.distantPast
+    private var draftSave: Task<Void, Never>?
+    private var draftDirty = false
 
     init(storageURL: URL? = nil, transport: any MailTransport, key: @escaping () throws -> Data = MailIdentityStore.loadOrCreate,
          now: @escaping () -> Date = Date.init) {
@@ -34,6 +40,10 @@ final class MailboxController: ObservableObject {
     }
     var selected: MailEntry? { book.entries.first { $0.id == selectedLetterID } }
     var fileURL: URL { url }
+    var localDeviceName: String {
+        let value = bindingDraft.localName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? "这台 Mac 的小喵" : value
+    }
     func start() {
         onUnreadChange?(book.unreadCount)
         timer?.invalidate()
@@ -45,6 +55,7 @@ final class MailboxController: ObservableObject {
     }
     func configurationChanged() { /* 云端模型的配置不影响点对点信箱。 */ }
     func shutdown() {
+        persistBindingDraft()
         generation += 1; timer?.invalidate(); timer = nil
         startup?.cancel(); startup = nil; sending?.cancel(); sending = nil; sendToken = nil
         isStarting = false; isSending = false; isRunning = false
@@ -52,13 +63,44 @@ final class MailboxController: ObservableObject {
         closing = Task { if let previous { await previous.value }; await transport.stop() }
     }
     func reloadStorage() {
-        do { book = try MailBook.read(from: url); unreadable = false; storageError = nil; onUnreadChange?(book.unreadCount) }
+        draftSave?.cancel(); draftSave = nil
+        do {
+            book = try MailBook.read(from: url); unreadable = false; storageError = nil
+            bindingDraft = book.bindingDraft ?? MailBindingDraft(peerName: book.peer?.name ?? "另一台 Mac 的小喵",
+                peerCode: book.peer.flatMap { try? MailDeviceCode(deviceID: $0.deviceID, ticket: $0.ticket).encoded() } ?? "")
+            draftDirty = false; bindingError = nil; deviceCode = book.localPairingCode ?? ""
+            onUnreadChange?(book.unreadCount)
+        }
         catch { unreadable = true; storageError = "信箱未能读取：\(error.localizedDescription)" }
     }
+    func updateBindingDraft(localName: String? = nil, peerName: String? = nil, peerCode: String? = nil) {
+        var draft = bindingDraft
+        if let localName { draft.localName = localName }
+        if let peerName { draft.peerName = peerName }
+        if let peerCode { draft.peerCode = peerCode }
+        guard draft != bindingDraft else { return }
+        bindingDraft = draft; draftDirty = true; bindingError = nil
+        draftSave?.cancel()
+        draftSave = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            self?.persistBindingDraft()
+        }
+    }
+    func flushBindingDraft() throws {
+        draftSave?.cancel(); draftSave = nil
+        guard draftDirty else { return }
+        do {
+            try bindingDraft.validate()
+            var changed = book; changed.bindingDraft = bindingDraft
+            try commit(changed); draftDirty = false; bindingError = nil
+        } catch { bindingError = "绑定资料未保存：\(error.localizedDescription)"; throw error }
+    }
+    func persistBindingDraft() { do { try flushBindingDraft() } catch { /* 窗口和主信箱展示保存错误，保留草稿供重试。 */ } }
     private func commit(_ changed: MailBook) throws {
         guard !unreadable else { throw MailError.invalid("原信箱无法读取，未覆盖文件，请先重试读取。") }
         do { try changed.write(to: url); book = changed; storageError = nil; onUnreadChange?(book.unreadCount) }
-        catch { storageError = "信件未保存：\(error.localizedDescription)"; throw error }
+        catch { storageError = "信箱未能保存：\(error.localizedDescription)"; throw error }
     }
     func setEnabled(_ enabled: Bool) throws {
         if !enabled { shutdown() }
@@ -79,10 +121,6 @@ final class MailboxController: ObservableObject {
             return
         }
         if sending == nil { sendNext() }
-        Task { [weak self] in
-            guard let self, let card = try? await self.transport.localCode(), self.isRunning else { return }
-            self.deviceCode = (try? card.encoded()) ?? self.deviceCode
-        }
     }
     private func startTransport() {
         let revision = generation
@@ -102,10 +140,12 @@ final class MailboxController: ObservableObject {
                 guard self.book.localDeviceID == nil || self.book.localDeviceID == card.deviceID || self.book.peer == nil else {
                     throw MailError.invalid("本机设备身份已改变。请先解除旧绑定，再重新启用并互换设备码。")
                 }
-                var changed = self.book; changed.localDeviceID = card.deviceID; try self.commit(changed)
+                let code = try card.encoded()
+                var changed = self.book; changed.localDeviceID = card.deviceID; changed.localPairingCode = code
+                try self.commit(changed)
                 await self.transport.setPeer(self.book.peer)
                 guard !Task.isCancelled, self.generation == revision else { return }
-                self.deviceCode = try card.encoded(); self.isRunning = true
+                self.deviceCode = code; self.isRunning = true
                 self.status = self.book.peer == nil ? "信箱已启用，请在两台 Mac 上互换设备码。" : "信箱已开启，等待来信；待寄信件会自动投递。"
                 self.sendNext()
             } catch {
@@ -124,13 +164,19 @@ final class MailboxController: ObservableObject {
         guard book.peer == nil || book.peer?.deviceID == peer.deviceID else { throw MailError.invalid("当前只绑定一台设备，请先解除现有绑定。") }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         peer.name = name.isEmpty ? "另一台 Mac 的小喵" : String(name.prefix(40))
-        var changed = book; changed.peer = peer; try commit(changed)
+        var draft = bindingDraft; draft.peerCode = code.trimmingCharacters(in: .whitespacesAndNewlines); draft.peerName = peer.name
+        try draft.validate()
+        var changed = book; changed.peer = peer; changed.bindingDraft = draft; try commit(changed)
+        draftSave?.cancel(); draftSave = nil; bindingDraft = draft; draftDirty = false; bindingError = nil
         await transport.setPeer(peer)
         status = "已绑定\(peer.name)。请在对方信箱也粘贴本机设备码，双方完成后才能收信。"
         sendNext()
     }
     func unbind() async throws {
-        var changed = book; changed.unbind(); try commit(changed)
+        var draft = bindingDraft; draft.peerCode = ""; draft.peerName = "另一台 Mac 的小喵"
+        try draft.validate()
+        var changed = book; changed.unbind(); changed.bindingDraft = draft; try commit(changed)
+        draftSave?.cancel(); draftSave = nil; bindingDraft = draft; draftDirty = false; bindingError = nil
         sending?.cancel(); sending = nil; sendToken = nil; isSending = false
         await transport.setPeer(nil)
         status = "已解除绑定，保留历史信件并停止向旧设备重试。"
@@ -171,7 +217,10 @@ final class MailboxController: ObservableObject {
         var changed = book
         let receipt = try changed.receive(letter, authenticatedID: authenticatedID, now: now())
         try commit(changed)
-        if book.unreadCount > previous { status = "收到一封信，点击小喵怀里的 💌 查看。" }
+        if book.unreadCount > previous {
+            status = "收到一封信，点击小喵举着的 💌 查看。"
+            onNewLetter?()
+        }
         return receipt
     }
     func select(_ id: UUID) {

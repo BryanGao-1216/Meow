@@ -38,7 +38,18 @@ public actor IrohMailTransport: MailTransport {
 
     public func localCode() throws -> MailDeviceCode {
         guard let endpoint else { throw MailError.invalid("请先启用信箱。") }
+        if !localOnly { return try Self.pairingCode(deviceID: endpoint.id().description) }
         return MailDeviceCode(deviceID: endpoint.id().description, ticket: try EndpointTicket.fromAddr(addr: endpoint.addr()).description)
+    }
+    /// 配对只包含固定公钥，最新地址由 N0 发现服务解析，不把临时端口写入配对码。
+    public static func pairingCode(deviceID: String) throws -> MailDeviceCode {
+        let id = try EndpointId.fromString(s: deviceID)
+        let address = EndpointAddr(id: id, relayUrl: nil, addresses: [])
+        return MailDeviceCode(deviceID: id.description, ticket: try EndpointTicket.fromAddr(addr: address).description)
+    }
+    private func liveTicket() throws -> String {
+        guard let endpoint else { throw MailError.invalid("信箱已关闭。") }
+        return try EndpointTicket.fromAddr(addr: endpoint.addr()).description
     }
     public func validatePeerCode(_ code: String) throws -> MailPeer {
         let card = try MailDeviceCode.decode(code)
@@ -53,7 +64,12 @@ public actor IrohMailTransport: MailTransport {
             try? outgoing?.close(errorCode: 1, reason: Data("binding_changed".utf8)); outgoing = nil
             for conn in connections.values { try? conn.close(errorCode: 1, reason: Data("binding_changed".utf8)) }
         }
-        self.peer = peer
+        var restored = peer
+        // 旧版保存的 IP/端口可能已过期。生产端点恢复绑定时按固定身份发现最新地址。
+        if !localOnly, let deviceID = restored?.deviceID, let ticket = try? Self.pairingCode(deviceID: deviceID).ticket {
+            restored?.ticket = ticket
+        }
+        self.peer = restored
     }
 
     public func send(_ letter: MailLetter) async throws -> MailReceipt {
@@ -79,7 +95,7 @@ public actor IrohMailTransport: MailTransport {
         defer { timeout.cancel(); try? connection.close(errorCode: 0, reason: Data()); if outgoing === connection { outgoing = nil } }
         return try await withTaskCancellationHandler {
             let stream = try await connection.openBi()
-            let request = MailPacket(kind: .letter, letter: letter, senderTicket: try localCode().ticket)
+            let request = MailPacket(kind: .letter, letter: letter, senderTicket: try liveTicket())
             try await stream.send().writeAll(buf: request.encoded())
             try await stream.send().finish()
             let response = try MailPacket.decode(await stream.recv().readToEnd(sizeLimit: 32768))
@@ -120,7 +136,7 @@ public actor IrohMailTransport: MailTransport {
                 let receipt = try await receiver(letter, peer.deviceID)
                 guard receipt.matches(letter), revision == generation else { throw CancellationError() }
                 updatePeerTicket(request.senderTicket, authenticatedID: peer.deviceID)
-                let reply = MailPacket(kind: .receipt, receipt: receipt, senderTicket: try localCode().ticket)
+                let reply = MailPacket(kind: .receipt, receipt: receipt, senderTicket: try liveTicket())
                 try await stream.send().writeAll(buf: reply.encoded())
                 try await stream.send().finish()
             } catch {
