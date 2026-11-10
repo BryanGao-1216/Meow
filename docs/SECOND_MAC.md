@@ -17,11 +17,11 @@ git status --short
 
 `.gitignore` 排除编译缓存、`build/` 下的应用与截图、参考项目 `vendor/`、模型权重、`.env`、日志、签名材料及常见本机数据副本。根目录 `Package.resolved` 应继续提交。不要将真实密钥写进源文件；忽略规则不会移除已经提交到 Git 历史里的文件。
 
-`vendor/mem0`、`vendor/Mochi` 和 `vendor/weibo-hot-with-your-taste` 只用于设计参考，运行时不读取。`vendor/iroh-ffi` 是构建依赖，打包脚本会自动克隆固定提交并下载、校验官方二进制，因此也无需上传。不要把整个 `vendor/` 作为嵌套仓库提交。
+`vendor/mem0`、`vendor/Mochi` 和 `vendor/weibo-hot-with-your-taste` 只用于设计参考，运行时不读取。`vendor/iroh-ffi` 是构建依赖，打包脚本会自动克隆固定提交、校验官方头文件压缩包，再从源码构建 macOS 14.4 通信库，因此也无需上传。不要把整个 `vendor/` 作为嵌套仓库提交。
 
 ## 在另一台 Mac 构建云端版
 
-要求 Apple 芯片、macOS 14.5+、可用且版本匹配的 Xcode Command Line Tools（Swift 5.10+）、Git 和 Python 3.9+。首次构建需要访问 GitHub，下载 iroh-ffi 源码和约 41 MB 的 Apple 二进制；无需 Rust、MLX 或本地模型权重。
+要求 M1 或更新的 Apple 芯片、macOS 14.4+、可用且版本匹配的 Xcode Command Line Tools（Swift 5.10+）、Git 和 Python 3.9+。首次构建通信库还需要 Rust 1.91+，以及访问 GitHub 和 Rust 软件包仓库，下载固定源码、约 41 MB 的官方接口压缩包和编译依赖；后续复用缓存。云端版无需 MLX 或本地模型权重。可按 [Rust 官方说明](https://www.rust-lang.org/tools/install) 安装构建工具；直接安装 `.dmg` 的使用者无需这些工具。
 
 ```sh
 # 若没有开发工具，先安装，并等待安装完成
@@ -30,6 +30,8 @@ xcode-select --install
 # 确认工具可用
 xcrun swift --version
 git --version
+rustc --version
+cargo --version
 python3 --version
 
 # 将地址替换为你自己的仓库地址

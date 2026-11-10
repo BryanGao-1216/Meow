@@ -8,7 +8,7 @@
 
 支持火山方舟云端对话与本地模型推理，界面和对话均使用简体中文。
 
-![系统要求](https://img.shields.io/badge/系统-macOS%2014.5%2B-blue)
+![系统要求](https://img.shields.io/badge/系统-macOS%2014.4%2B-blue)
 ![芯片架构](https://img.shields.io/badge/芯片-Apple%20Silicon-black)
 ![开发语言](https://img.shields.io/badge/语言-Swift%205.10%2B-orange)
 ![开源许可](https://img.shields.io/badge/许可-MIT-lightgrey)
@@ -35,7 +35,7 @@
 
 普通使用者可以直接使用发布者提供的 **Meow 安装磁盘（`.dmg`）**，无需下载源码、安装开发工具或下载本地模型。
 
-1. 在 Apple 芯片、macOS 14.5 或更高版本的 Mac 上打开安装磁盘。
+1. 在 M1 或更新的 Apple 芯片、macOS 14.4 或更高版本的 Mac 上打开安装磁盘。
 2. 将 `Meow.app` 拖入旁边的 **Applications（应用程序）** 文件夹。
 3. 从“应用程序”打开 Meow，首次在设置中填写云端模型密钥；使用其他接入方案时同时调整接口地址和模型名称。
 4. 测试连接并保存，即可开始聊天；基础动作不依赖模型配置，信箱可按需启用和绑定。
@@ -52,11 +52,11 @@
 
 | 项目 | 要求 |
 |---|---|
-| 设备 | Apple 芯片的 Mac |
-| 系统 | macOS 14.5 或更高版本 |
+| 设备 | M1 或更新的 Apple 芯片 Mac |
+| 系统 | macOS 14.4 或更高版本 |
 | 开发工具 | 可用且版本匹配的 Xcode 命令行工具，Swift 5.10 或更高版本 |
-| 其他工具 | Git、Python 3.9 或更高版本 |
-| 首次构建 | 能访问 GitHub，以下载通信依赖 |
+| 其他工具 | Git、Python 3.9 或更高版本；首次编译通信库需 Rust 1.91 或更高版本 |
+| 首次构建 | 能访问 GitHub 和 Rust 软件包仓库，以下载通信依赖 |
 | 云端功能 | 可用的火山方舟接口地址、模型名称和接口密钥 |
 
 尚未安装开发工具时，先执行下面的命令，并等待安装完成：
@@ -67,7 +67,7 @@ xcode-select --install
 
 ### 构建云端版
 
-使用云端模型时，无需下载本地模型权重，也无需安装 Rust 或配置 Metal 着色器编译环境。
+使用云端模型时，无需下载本地模型权重或配置 Metal 着色器编译环境。从源码首次构建时需安装 Rust 1.91 或更新版本，用于将通信库编译到 macOS 14.4；安装包使用者无需 Rust。
 
 ```sh
 git clone https://github.com/BryanGao-1216/Meow.git
@@ -77,9 +77,11 @@ cd Meow
 open build/Meow.app
 ```
 
-打包脚本会自动准备固定版本的 iroh-ffi 源码，下载并校验官方 Apple 二进制，然后构建、打包和本机签名。首次需要下载约 41 MB 的通信二进制，后续复用本机缓存。
+打包脚本会自动准备固定版本的 iroh-ffi 源码，下载并校验官方压缩包，保留匹配的接口头文件，再从源码重新构建 M1 / macOS 14.4 通信库。首次需要下载约 41 MB 的官方压缩包及 Rust 编译依赖，编译可能需要数分钟，后续复用本机缓存。Rust 可按 [官方安装说明](https://www.rust-lang.org/tools/install) 安装，也可用 `MEOW_CARGO` 指定已有的 `cargo` 路径。
 
 构建完成后，应用位于 `build/Meow.app`。关闭旧版应用，再打开新版即可。重新拉取更新后，也需再次执行打包命令。
+
+应用、安装信息和通信库均以 **M1 / macOS 14.4** 为兼容基线。打包时会自动检查真实可执行文件及嵌入动态库的架构和最低系统版本；也可运行 `python3 scripts/macos_compat.py --app build/Meow.app` 单独检查。最终发布前应在 M1、macOS 14.4 真机上验收。
 
 ### 配置火山方舟
 

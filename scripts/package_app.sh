@@ -4,9 +4,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="Meow"
-APP_VERSION="${MEOW_VERSION:-1.0.3}"
-APP_BUILD="${MEOW_BUILD_NUMBER:-4}"
+APP_VERSION="${MEOW_VERSION:-1.0.4}"
+APP_BUILD="${MEOW_BUILD_NUMBER:-5}"
 SIGNING_IDENTITY="${MEOW_CODESIGN_IDENTITY:--}"
+export MACOSX_DEPLOYMENT_TARGET="14.4"
 [[ "$APP_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "版本号无效" >&2; exit 1; }
 [[ "$APP_BUILD" =~ ^[0-9]+$ ]] || { echo "构建号无效" >&2; exit 1; }
 APP="$ROOT/build/$APP_NAME.app"
@@ -87,7 +88,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$APP_VERSION</string>
     <key>CFBundleVersion</key><string>$APP_BUILD</string>
-    <key>LSMinimumSystemVersion</key><string>14.5</string>
+    <key>LSMinimumSystemVersion</key><string>14.4</string>
     <key>NSLocalNetworkUsageDescription</key><string>喵喵信箱需要连接已绑定的另一台 Mac，用来寄送和接收文本信件。</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
@@ -97,6 +98,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 printf 'APPL????' > "$APP/Contents/PkgInfo"
+python3 "$ROOT/scripts/macos_compat.py" --app "$APP"
 
 if [[ "$SIGNING_IDENTITY" == "-" ]]; then
   echo "==> 本机签名（更新二进制后，钥匙串可能需要重新授权）"

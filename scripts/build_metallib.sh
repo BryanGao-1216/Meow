@@ -7,10 +7,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MLX_SRC="$ROOT/.build/checkouts/mlx-swift/Source/Cmlx/mlx"
 KERNELS="$MLX_SRC/mlx/backend/metal/kernels"
 OUT_DIR="${1:-$ROOT/.build/release}"
-WORK="$ROOT/.build/metallib-work"
+# 缓存按兼容版本隔离，避免复用在更新系统上生成的旧 AIR 文件。
+WORK="$ROOT/.build/metallib-work-macos14.4"
 mkdir -p "$WORK"
 
-FLAGS=(-Wall -Wextra -fno-fast-math -Wno-c++17-extensions)
+FLAGS=(-mmacosx-version-min=14.4 -Wall -Wextra -fno-fast-math -Wno-c++17-extensions)
 INCLUDES=(-I"$MLX_SRC" -I"$KERNELS/metal_3_1")
 
 # Non-JIT kernels (always fetched from the default metallib at runtime)

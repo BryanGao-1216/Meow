@@ -2,10 +2,11 @@
 
 ## Requirements
 
-For **cloud-only** builds, use an Apple Silicon Mac with macOS 14.5+, working
-Swift 5.10+ command line tools, Git and Python 3.9+. Model weights, MLX
+For **cloud-only** builds, use an Apple Silicon Mac with macOS 14.4+, working
+Swift 5.10+ command line tools, Git, Python 3.9+ and Rust 1.91+ for the first
+mail transport build. Model weights, MLX
 dependencies, and the Metal compiler are not used. The packaging script prepares
-the pinned iroh dependency automatically; the first build needs GitHub access:
+the pinned iroh dependency automatically; the first build needs GitHub and crates.io access:
 
 ```bash
 ./scripts/package_app.sh --cloud-only
@@ -24,7 +25,7 @@ Test the connection and save. See the [云端配置与使用说明](../README.md
 The requirements below apply to the **local MLX** build:
 
 - Apple Silicon Mac (the LLM runs on the GPU via [MLX](https://github.com/ml-explore/mlx-swift))
-- macOS 14.5+
+- macOS 14.4+
 - Xcode 16+ command line tools (`xcode-select --install` at minimum, full Xcode
   recommended — the Metal shader compiler is required)
 
@@ -59,7 +60,7 @@ ad-hoc signed).
 
 `scripts/package_app.sh`:
 
-Before compilation it prepares the pinned iroh-ffi Swift source and checksum-verified Apple binary with `scripts/prepare_iroh.py`.
+Before compilation it prepares the pinned iroh-ffi Swift source and checksum-verified Apple headers with `scripts/prepare_iroh.py`, then rebuilds the macOS static library for M1 and macOS 14.4. This first build requires Rust 1.91+; later builds reuse the verified cache. The upstream binary targets 14.5 and is not used as the macOS runtime library.
 
 1. `swift build -c release`
 2. `scripts/build_metallib.sh` — SwiftPM builds of mlx-swift don't produce the
@@ -119,7 +120,11 @@ command, parsing, canned-content, protocol, memory, news and memo integration ch
 loading a model or making external API requests. Mailbox checks use real loopback QUIC connections; they do not use public discovery or relays. Memory checks use temporary files and
 an injected fake extractor; the real memory file is untouched.
 
-喵喵信箱构建时由 `scripts/prepare_iroh.py` 准备固定版本的官方 Apple 二进制，校验 SHA-256，无需本机 Rust。单独运行 `--mailbox-check` 检查本机双端真实 QUIC 收发；`--mailbox-render-check /tmp/meow-mailbox-preview` 检查窗口、抱信与点击区域。详见 [MAILBOX_DESIGN.md](MAILBOX_DESIGN.md)。
+喵喵信箱构建时由 `scripts/prepare_iroh.py` 准备固定版本接口，校验官方压缩包 SHA-256，再使用 Rust 1.91+ 从源码构建兼容 M1 / macOS 14.4 的 macOS 库并缓存。安装包使用者无需 Rust。单独运行 `--mailbox-check` 检查本机双端真实 QUIC 收发；`--mailbox-render-check /tmp/meow-mailbox-preview` 检查窗口、抱信与点击区域。详见 [MAILBOX_DESIGN.md](MAILBOX_DESIGN.md)。
+
+打包会自动检查真实 Mach-O 版本及 arm64 架构。可单独运行 `python3 scripts/macos_compat.py --app build/Meow.app` 复核；兼容检查自身的真实编译样例测试为 `python3 scripts/test_macos_compat.py`。最低版本声明和本机测试不能代替 M1、macOS 14.4 的真机验收。
+
+本次 1.0.4 安装包与回归检查覆盖云端版。本地 MLX 的着色器编译脚本也固定了 14.4 目标，并隔离旧 AIR 缓存；本地推理仍需在带 Metal 编译工具的环境构建，再单独完成目标机器上的 GPU 验收。
 
 备忘录实窗样例：`.build-cloud/release/Kokosuki --memo-render-check /tmp/meow-memo-preview`。使用临时样例，不读取真实备忘录或云端凭据。模块目录与扩展方式见 [ARCHITECTURE.md](ARCHITECTURE.md)，备忘录调度与聊天协议见 [MEMOS_DESIGN.md](MEMOS_DESIGN.md)。
 

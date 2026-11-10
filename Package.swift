@@ -11,7 +11,7 @@ let mlxDependencies: [Target.Dependency] = cloudOnly ? [] : [
 
 let package = Package(
     name: "Kokosuki",
-    platforms: [.macOS("14.5")],
+    platforms: [.macOS("14.4")],
     dependencies: [.package(path: "vendor/iroh-ffi")] + (cloudOnly ? [] : [
         .package(url: "https://github.com/ml-explore/mlx-swift-examples", exact: "2.29.1")
     ]),

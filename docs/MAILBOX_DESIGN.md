@@ -1,6 +1,6 @@
 # 喵喵信箱
 
-第一版提供两台固定 Apple 芯片 Mac 之间的文本送信。使用本地固定版本 iroh-ffi v1.2.0 的 Swift 绑定与 Rust 静态库，最低系统版本为 macOS 14.5。信箱不调用大模型，也不把来信当成指令、聊天历史或主人记忆。
+第一版提供两台固定 Apple 芯片 Mac 之间的文本送信。使用本地固定版本 iroh-ffi v1.2.0 的 Swift 绑定与 Rust 静态库，最低系统版本为 macOS 14.4。信箱不调用大模型，也不把来信当成指令、聊天历史或主人记忆。
 
 ## 两台设备如何使用
 
@@ -53,7 +53,9 @@
 
 ## 构建与检查
 
-`scripts/package_app.sh` 会先调用 `scripts/prepare_iroh.py` 准备固定版本 Swift 绑定与官方 Apple 二进制，核对 SHA-256 并放入忽略提交的 `.build-iroh` 缓存。无需安装 Rust 或自行构建完整 iOS 工具链。首次构建需要联网下载依赖，后续可复用缓存。固定源码提交和二进制版本必须一致，脚本不会覆盖用户改动的第三方源码。
+`scripts/package_app.sh` 会先调用 `scripts/prepare_iroh.py` 准备固定版本 Swift 绑定与官方 Apple 压缩包，核对 SHA-256 并放入忽略提交的 `.build-iroh` 缓存。上游包和 macOS 预编译库要求 14.5，因此脚本会幂等调整第三方包的 macOS 声明为 14.4，并调用 `build_iroh_macos.py`，使用同一提交和 `Cargo.lock` 重编译 macOS 静态库：目标为 `aarch64-apple-darwin`，CPU 为 `apple-m1`，`MACOSX_DEPLOYMENT_TARGET=14.4`。不会修改官方压缩包，也不会直接改写预编译库的版本标记。
+
+首次编译需 Rust 1.91+ 和联网下载依赖，无需构建 iOS 或安装完整 iOS 工具链。兼容库按源码提交、锁文件、构建参数与结果校验值缓存；之后有效缓存可直接使用。安装包接收者无需 Rust。打包前由 `macos_compat.py` 检查库及最终 Mach-O 的最低系统版本，防止将要求更高系统的旧产物混入安装包。
 
 ```sh
 python3 scripts/prepare_iroh.py

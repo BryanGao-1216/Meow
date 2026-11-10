@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Prepare the pinned, checksum-verified Apple binary; no Rust installation needed."""
+"""准备固定版本 iroh 绑定、校验官方头文件，并构建兼容 macOS 14.4 的通信库。"""
 from pathlib import Path
 import hashlib
 import shutil
 import subprocess
 import urllib.request
 import zipfile
+
+from build_iroh_macos import prepare_macos
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "vendor" / "iroh-ffi"
@@ -24,6 +26,13 @@ def prepare():
     commit = subprocess.check_output(["git", "-C", str(SOURCE), "rev-parse", "HEAD"], text=True).strip()
     if commit != COMMIT:
         raise SystemExit("iroh-ffi 源码版本与固定二进制不一致；请先审查依赖升级，不会覆盖当前源码。")
+    # 上游 Swift 包声明 14.5；本项目从同一源码重编译 macOS 库后使用 14.4。
+    manifest = SOURCE / "Package.swift"
+    original = manifest.read_text()
+    if '.macOS("14.5")' in original:
+        manifest.write_text(original.replace('.macOS("14.5")', '.macOS("14.4")', 1))
+    elif '.macOS("14.4")' not in original:
+        raise SystemExit("iroh-ffi 平台声明已变化，请先审查兼容性适配。")
     CACHE.mkdir(exist_ok=True)
     archive = CACHE / "IrohLib.xcframework.zip"
     if not archive.exists():
@@ -44,10 +53,11 @@ def prepare():
                 if not (CACHE / member).resolve().is_relative_to(CACHE.resolve()):
                     raise SystemExit("无效的依赖压缩包路径。")
             bundle.extractall(CACHE)
+    prepare_macos(COMMIT)
     target = SOURCE / "Iroh.xcframework"
     if not target.exists():
         target.symlink_to("../../.build-iroh/Iroh.xcframework", target_is_directory=True)
-    print(f"iroh-ffi {TAG} 已就绪（Apple Silicon，SHA-256 已验证）")
+    print(f"iroh-ffi {TAG} 已就绪（M1 起 / macOS 14.4，源码版本、官方压缩包及兼容库均已校验）")
 
 
 if __name__ == "__main__":

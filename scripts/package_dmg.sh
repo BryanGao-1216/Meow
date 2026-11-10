@@ -41,6 +41,7 @@ VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIS
   echo "此分发脚本仅支持 Apple 芯片版本" >&2; exit 1;
 }
 codesign --verify --deep --strict "$APP"
+python3 "$ROOT/scripts/macos_compat.py" --app "$APP"
 
 OUTPUT="${OUTPUT:-$ROOT/build/Meow-$VERSION-macOS-arm64.dmg}"
 [[ "$OUTPUT" == *.dmg ]] || { echo "输出文件名应以 .dmg 结尾" >&2; exit 1; }
