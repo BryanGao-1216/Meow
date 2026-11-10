@@ -1,4 +1,4 @@
-# 高小喵的记忆：记住主人，也记住一起生活的经历
+# Meow 的记忆：记住主人，也记住一起生活的经历
 
 这一版把记忆从“最近几轮对话”扩展为跨重启的小本本，并让它参与真实行为。目标是逐渐形成熟悉感，而不是把聊天记录无限塞进提示词。
 
@@ -39,7 +39,7 @@
 
 这里采用原生 Swift 实现，没有引入 Python 服务、mem0 SDK、向量数据库或额外的 embedding API，也没有把 mem0 的服务端功能整体搬进桌面宠物。
 
-| mem0 的思路 | 高小喵的适配 |
+| mem0 的思路 | Meow 的适配 |
 |---|---|
 | 从新消息提取独立事实 | 明确声明先由本机规则提取；复杂声明可在回复后由当前云端模型整理 |
 | 同主题记忆关联 | 稳定主题 key、`supersedes` 版本关系；较新的纠正优先 |
@@ -86,12 +86,12 @@ flowchart TD
 - 同主题的新事实保留前一版的 ID；相同事实只增加确认。较旧观察时间的整理结果不能覆盖后来纠正的事实。过期内容与旧版本仍可在小本本查看，直到被删除或达到容量上限。
 - 心情保留 24 小时；今天／明天／后天的计划分别在相应日期结束后过期；其余计划保留至观察日期后第 7 天零点。不进行完整自然语言日历解析。
 - 分发版的首次主人资料模板默认为空，不会预填其他人的姓名。旧版本已迁入的小本本仍保留本机资料；私人定制可设置首次模板。历史聊天只迁入主人明确声明的资料，不调用模型、不读取宠物回复作为主人事实。清空后不重新导入。
-- 主人资料已从固定系统提示词移出。宠物自己的性格、来历、年龄和自我介绍仍在 [Persona.swift](../Sources/Kokosuki/Conversation/Persona.swift) 中。`initialOwnerProfile` 仅用于尚未迁移过的首次小本本，不是日常更新入口。
+- 主人资料已从固定系统提示词移出。宠物自己的性格、来历、年龄和自我介绍仍在 [Persona.swift](../Sources/Meow/Conversation/Persona.swift) 中。`initialOwnerProfile` 仅用于尚未迁移过的首次小本本，不是日常更新入口。
 - 遗忘先使后台任务的版本失效，再删除所有对应事实版本、清空短期聊天并原子写入磁盘。保存失败会显示错误；重试成功前，磁盘上的旧文件仍可能存在。
 
 ## 本机存储、开关与费用
 
-记忆文件：`~/Library/Application Support/Kokosuki/pet-memory.json`。原子写入，交互后短暂合并写入，每分钟更新相伴日期与最后在线时间，退出时保存。聊天仍在 `chat-history.json`，当前饱食度等仍在 `pet-state.json`。
+记忆文件：`~/Library/Application Support/Meow/pet-memory.json`。原子写入，交互后短暂合并写入，每分钟更新相伴日期与最后在线时间，退出时保存。聊天仍在 `chat-history.json`，当前饱食度等仍在 `pet-state.json`。
 
 文件无法解码或版本不受支持时停止记忆写入，不覆盖原文件。小本本显示错误，可打开存储位置并重试读取。磁盘保存错误也会展示并提供重试；若遗忘时旧聊天文件删除失败，会单独提示并提供“重试清除聊天”，不会声称已经完全清除。
 
@@ -103,20 +103,20 @@ flowchart TD
 
 | 文件 | 职责 |
 |---|---|
-| `Sources/KokosukiMemory/MemoryModels.swift` | 可持久化资料、来源、经历与相处倾向 |
-| `Sources/KokosukiMemory/MemoryJournal.swift` | 本地日志、版本、去重、检索、过期、遗忘、熟悉度 |
-| `Sources/KokosukiMemory/MemoryLearning.swift` | 中文规则、整理提示词、结构化结果校验 |
-| `Sources/KokosukiMemory/BirthdayMemory.swift` | 中文生日日期解析、有效性校验与主人话题关联 |
-| `Sources/Kokosuki/Features/Memory/PetMemory.swift` | 主线程控制器、迁移、后台整理、取消与保存 |
-| `Sources/Kokosuki/Conversation/Brain.swift` | 检索注入与回复后整理 |
-| `Sources/Kokosuki/Pet/PetEngine.swift` | 真实经历写入和行为变化 |
-| `Sources/Kokosuki/Features/Memory/MemoryWindow.swift` | 小本本查看、来源、旧版本、删除 |
+| `Sources/MeowMemory/MemoryModels.swift` | 可持久化资料、来源、经历与相处倾向 |
+| `Sources/MeowMemory/MemoryJournal.swift` | 本地日志、版本、去重、检索、过期、遗忘、熟悉度 |
+| `Sources/MeowMemory/MemoryLearning.swift` | 中文规则、整理提示词、结构化结果校验 |
+| `Sources/MeowMemory/BirthdayMemory.swift` | 中文生日日期解析、有效性校验与主人话题关联 |
+| `Sources/Meow/Features/Memory/PetMemory.swift` | 主线程控制器、迁移、后台整理、取消与保存 |
+| `Sources/Meow/Conversation/Brain.swift` | 检索注入与回复后整理 |
+| `Sources/Meow/Pet/PetEngine.swift` | 真实经历写入和行为变化 |
+| `Sources/Meow/Features/Memory/MemoryWindow.swift` | 小本本查看、来源、旧版本、删除 |
 
 正常开发环境运行：
 
 ```bash
-KOKOSUKI_CLOUD_ONLY=1 swift test --scratch-path .build-cloud
-.build-cloud/release/Kokosuki --selftest --unit-only
+MEOW_CLOUD_ONLY=1 swift test --scratch-path .build-cloud
+.build-cloud/release/Meow --selftest --unit-only
 ```
 
 记忆单元用例覆盖保存恢复、资料纠正、旧请求时间顺序、检索预算、过期、所有版本遗忘、敏感标记过滤、行为倾向和容量限制。应用内集成用例使用临时目录与注入的模拟整理器，覆盖历史角色隔离、正常整理、删除时的异步回写、迁移不复活、损坏文件保护、聊天等待状态复位；不会读取真实小本本或调用模型。

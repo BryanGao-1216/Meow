@@ -20,12 +20,16 @@ class MacOSCompatibilityTests(unittest.TestCase):
         source = cls.root / "main.c"
         source.write_text("int main(void) { return 0; }\n")
         for arch, floor, name in [("arm64", "14.4", "supported"), ("arm64", "14.5", "newer"),
-                                  ("x86_64", "14.4", "intel")]:
+                                  ("x86_64", "14.4", "intel"), ("x86_64", "14.5", "intel-newer")]:
             subprocess.run(["clang", "-target", f"{arch}-apple-macosx{floor}", str(source), "-o", str(cls.root / name)],
                            check=True, capture_output=True)
         subprocess.run(["clang", "-target", "arm64-apple-macosx14.5", "-c", str(source), "-o", str(cls.root / "newer.o")],
                        check=True, capture_output=True)
         subprocess.run(["ar", "rcs", str(cls.root / "newer.a"), str(cls.root / "newer.o")], check=True, capture_output=True)
+        for name, intel in [("universal", "intel"), ("universal-newer", "intel-newer")]:
+            subprocess.run(["lipo", "-create", str(cls.root / "supported"), str(cls.root / intel), "-output", str(cls.root / name)], check=True)
+        subprocess.run(["clang", "-target", "i386-apple-macosx10.13", "-c", str(source), "-o", str(cls.root / "unsupported.o")],
+                       check=True, capture_output=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -50,9 +54,38 @@ class MacOSCompatibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "14.5"):
             check_binary(self.root / "newer.a")
 
-    def test_rejects_intel_binary(self):
-        with self.assertRaisesRegex(ValueError, "arm64"):
-            check_binary(self.root / "intel")
+    def test_accepts_intel_binary(self):
+        self.assertEqual(check_binary(self.root / "intel", {"x86_64"}), "14.4")
+
+    def test_rejects_unsupported_architecture(self):
+        with self.assertRaisesRegex(ValueError, "i386"):
+            check_binary(self.root / "unsupported.o")
+
+    def test_accepts_universal_binary(self):
+        self.assertEqual(check_binary(self.root / "universal", {"arm64", "x86_64"}), "14.4")
+
+    def test_checks_minimum_version_in_both_slices(self):
+        with self.assertRaisesRegex(ValueError, "14.5"):
+            check_binary(self.root / "universal-newer", {"arm64", "x86_64"})
+
+    def test_rejects_missing_architecture(self):
+        with self.assertRaisesRegex(ValueError, "缺少架构"):
+            check_binary(self.root / "supported", {"arm64", "x86_64"})
+
+    def test_universal_app_requires_both_architectures_in_dependencies(self):
+        app = self.app("universal-thin-dependency", "universal")
+        (app / "Contents/Frameworks").mkdir()
+        shutil.copy2(self.root / "supported", app / "Contents/Frameworks/Thin.dylib")
+        with self.assertRaisesRegex(ValueError, "缺少架构"):
+            check_app(app)
+
+    def test_rejects_unexpected_app_architecture(self):
+        with self.assertRaisesRegex(ValueError, "预期"):
+            check_app(self.app("wrong-architecture", "supported"), {"x86_64"})
+
+    def test_accepts_matching_universal_app(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(check_app(self.app("universal-bundle", "universal"), {"arm64", "x86_64"}), {"arm64", "x86_64"})
 
     def test_lowering_plist_alone_is_not_enough(self):
         with self.assertRaisesRegex(ValueError, "14.5"):

@@ -21,7 +21,7 @@ git status --short
 
 ## 在另一台 Mac 构建云端版
 
-要求 M1 或更新的 Apple 芯片、macOS 14.4+、可用且版本匹配的 Xcode Command Line Tools（Swift 5.10+）、Git 和 Python 3.9+。首次构建通信库还需要 Rust 1.91+，以及访问 GitHub 和 Rust 软件包仓库，下载固定源码、约 41 MB 的官方接口压缩包和编译依赖；后续复用缓存。云端版无需 MLX 或本地模型权重。可按 [Rust 官方说明](https://www.rust-lang.org/tools/install) 安装构建工具；直接安装 `.dmg` 的使用者无需这些工具。
+要求 Apple 芯片（M1 起）或 Intel 64 位 Mac、macOS 14.4+、可用且版本匹配的 Xcode Command Line Tools（Swift 5.10+）、Git 和 Python 3.9+。首次构建通信库还需要 Rust 1.91+，以及访问 GitHub 和 Rust 软件包仓库，下载固定源码、约 41 MB 的官方接口压缩包和编译依赖；后续复用缓存。云端版默认同时构建两个架构，无需 MLX 或本地模型权重。可按 [Rust 官方说明](https://www.rust-lang.org/tools/install) 安装构建工具，并执行 `rustup target add aarch64-apple-darwin x86_64-apple-darwin`；直接安装 `.dmg` 的使用者无需这些工具。
 
 ```sh
 # 若没有开发工具，先安装，并等待安装完成
@@ -60,7 +60,7 @@ build/Meow.app/Contents/MacOS/Meow --selftest --unit-only
 ## 哪些东西不会随 Git 同步
 
 - 云端 API Key、微博 Cookie 和信箱设备私钥保存在钥匙串，需要在另一台设备独立配置或生成。
-- 记忆、聊天、备忘录、信件和宠物状态保存在 `~/Library/Application Support/Kokosuki/`。
+- 记忆、聊天、备忘录、信件和宠物状态保存在 `~/Library/Application Support/Meow/`。
 - 窗口位置、尺寸和模型设置等保存在本机偏好设置中。
 
 仅复制应用或拉取源码不会迁移上述数据。测试两台独立设备时不要复制信箱私钥或整份信箱存储，两边应有不同的设备身份。

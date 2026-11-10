@@ -2,13 +2,13 @@
 
 ## 给使用者
 
-只需收到一个 `.dmg` 安装磁盘，不需要源码、Git、Python、Rust、Xcode 或本地模型。当前分发的是云端模型版，支持 M1 或更新的 Apple 芯片 Mac 和 macOS 14.4 及更高版本。
+只需收到一个 `.dmg` 安装磁盘，不需要源码、Git、Python、Rust、Xcode 或本地模型。当前分发的是云端模型版，支持 Apple 芯片（M1 起）和 Intel 64 位 Mac，最低系统版本为 macOS 14.4。
 
-macOS 14.4 请使用本次重新编译的 **1.0.4** 安装包。旧的 1.0.3 安装包及其通信库要求 macOS 14.5，修改旧包的安装声明无法完成兼容适配。新打包流程会检查真实可执行文件的架构与系统版本。
+**1.0.8 通用版（universal2）** 同时包含 `arm64` 和 `x86_64`，适用于两类芯片；也可选择相应的单架构包。Intel 版继续使用云端模型，信箱可与 Apple 芯片版互寄。旧的 1.0.4 包只有 Apple 芯片架构；1.0.3 包还要求 macOS 14.5。新打包流程会检查每个切片的实际系统版本及所有嵌入库的架构。
 
 打开安装磁盘，将 `Meow.app` 拖到旁边的“Applications（应用程序）”文件夹，然后从“应用程序”启动。首次缺少模型密钥时会自动打开设置，填写所用服务的接口地址、模型和密钥，测试连接并保存即可使用。项目已预填 Agent Plan 的地址和模型名；若使用其他方案，需要调整为相应参数。
 
-小喵和菜单栏猫咪图标会在启动后出现。双击小喵聊天，右键或菜单栏可进入设置、小本本、热点、备忘录和信箱。信箱无需模型密钥，启用后还需双方互换设备码绑定。
+Meow 和菜单栏猫咪图标会在启动后出现。双击 Meow 聊天，右键或菜单栏可进入设置、小本本、热点、备忘录和信箱。信箱无需模型密钥，启用后还需双方互换设备码绑定。
 
 安装包附有中文的 `安装与使用说明.txt`。更新时先退出旧版 Meow，再替换“应用程序”中的应用。本机记忆、配置和信件会继续保留。
 
@@ -35,8 +35,8 @@ macOS 14.4 请使用本次重新编译的 **1.0.4** 安装包。旧的 1.0.3 安
 该脚本会先调用 `package_app.sh --cloud-only`，再完成安装磁盘封装。默认输出：
 
 ```text
-build/Meow-<版本>-macOS-arm64.dmg
-build/Meow-<版本>-macOS-arm64.dmg.sha256
+build/Meow-<版本>-macOS-universal2.dmg
+build/Meow-<版本>-macOS-universal2.dmg.sha256
 ```
 
 已有构建好的应用时，可以直接封装：
@@ -44,6 +44,8 @@ build/Meow-<版本>-macOS-arm64.dmg.sha256
 ```sh
 ./scripts/package_dmg.sh --app build/Meow.app
 ```
+
+需要单独架构时，先运行 `./scripts/package_app.sh --cloud-only --arch arm64` 或 `--arch x86_64`，再封装应用。磁盘文件名会自动匹配实际架构。发布通用版前需重新运行默认的 `./scripts/package_app.sh --cloud-only`，避免误用上一次的单架构产物。通用版会分别使用 SwiftPM 构建两个架构，并合并主程序；通信库也以两个架构独立编译后合并。
 
 自定义输出位置：
 
@@ -56,7 +58,7 @@ build/Meow-<版本>-macOS-arm64.dmg.sha256
 ## 数据边界
 
 - 打包只从构建的应用和仓库中的说明、许可证取文件，不复制钥匙串、偏好设置或 Application Support。
-- 新安装的主人资料模板默认为空，姓名、称呼和偏好由使用者通过聊天告诉小喵。
+- 新安装的主人资料模板默认为空，姓名、称呼和偏好由使用者通过聊天告诉 Meow。
 - 已有安装沿用本机记录，不会因更新模板而清空记忆。
 - 云端接口密钥、微博凭据和信箱私钥由每台设备独立配置或生成。
 - 替换应用保留个人数据；将应用移到废纸篓不会自动删除本机记录。
@@ -66,11 +68,13 @@ build/Meow-<版本>-macOS-arm64.dmg.sha256
 生成安装包后，可检查映像和校验值：
 
 ```sh
-hdiutil verify build/Meow-1.0.2-macOS-arm64.dmg
+hdiutil verify build/Meow-1.0.8-macOS-universal2.dmg
 cd build
-shasum -a 256 -c Meow-1.0.2-macOS-arm64.dmg.sha256
+shasum -a 256 -c Meow-1.0.8-macOS-universal2.dmg.sha256
 ```
 
 文件名中的版本号应与实际生成的包一致。也应挂载映像、复制应用到其他目录，检查签名并运行 `--selftest --unit-only`。自检使用临时数据，不请求真实模型。
+
+在装有 Rosetta 的 Apple 芯片 Mac 上，可用 `arch -arm64 应用路径/Contents/MacOS/Meow --selftest --unit-only` 和 `arch -x86_64 应用路径/Contents/MacOS/Meow --selftest --unit-only` 分别验证两个切片。Intel 切片在 Rosetta 下通过不能代替 Intel 真机验收，尤其是桌面绘制、休眠恢复、首次授权和跨网络通信。
 
 本机封装和运行检查不能代替另一台真实 Mac 的首次下载、系统门禁、模型连接和跨网络信箱验收。构建环境问题见 [源码测试说明](SECOND_MAC.md)。

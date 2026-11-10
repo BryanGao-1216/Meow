@@ -3,40 +3,40 @@ import PackageDescription
 import Foundation
 
 // Cloud builds need neither MLX nor the Metal compiler/model weights.
-let cloudOnly = ProcessInfo.processInfo.environment["KOKOSUKI_CLOUD_ONLY"] == "1"
+let cloudOnly = ProcessInfo.processInfo.environment["MEOW_CLOUD_ONLY"] == "1"
 let mlxDependencies: [Target.Dependency] = cloudOnly ? [] : [
     .product(name: "MLXLLM", package: "mlx-swift-examples"),
     .product(name: "MLXLMCommon", package: "mlx-swift-examples"),
 ]
 
 let package = Package(
-    name: "Kokosuki",
+    name: "Meow",
     platforms: [.macOS("14.4")],
     dependencies: [.package(path: "vendor/iroh-ffi")] + (cloudOnly ? [] : [
         .package(url: "https://github.com/ml-explore/mlx-swift-examples", exact: "2.29.1")
     ]),
     targets: [
-        .target(name: "KokosukiCloud"),
-        .target(name: "KokosukiMemory"),
-        .target(name: "KokosukiNews"),
-        .target(name: "KokosukiMemos"),
-        .target(name: "KokosukiMailbox"),
-        .target(name: "KokosukiIroh", dependencies: [.target(name: "KokosukiMailbox"), .product(name: "IrohLib", package: "iroh-ffi")]),
+        .target(name: "MeowCloud"),
+        .target(name: "MeowMemory"),
+        .target(name: "MeowNews"),
+        .target(name: "MeowMemos"),
+        .target(name: "MeowMailbox"),
+        .target(name: "MeowIroh", dependencies: [.target(name: "MeowMailbox"), .product(name: "IrohLib", package: "iroh-ffi")]),
         .executableTarget(
-            name: "Kokosuki",
-            dependencies: [.target(name: "KokosukiCloud"), .target(name: "KokosukiMemory"), .target(name: "KokosukiNews"), .target(name: "KokosukiMemos"), .target(name: "KokosukiMailbox"), .target(name: "KokosukiIroh")] + mlxDependencies,
-            path: "Sources/Kokosuki"
+            name: "Meow",
+            dependencies: [.target(name: "MeowCloud"), .target(name: "MeowMemory"), .target(name: "MeowNews"), .target(name: "MeowMemos"), .target(name: "MeowMailbox"), .target(name: "MeowIroh")] + mlxDependencies,
+            path: "Sources/Meow"
         ),
-        .testTarget(name: "KokosukiCloudTests", dependencies: ["KokosukiCloud"]),
-        .testTarget(name: "KokosukiMemoryTests", dependencies: ["KokosukiMemory"]),
-        .testTarget(name: "KokosukiNewsTests", dependencies: ["KokosukiNews"]),
-        .testTarget(name: "KokosukiMemosTests", dependencies: ["KokosukiMemos"]),
-        .testTarget(name: "KokosukiMailboxTests", dependencies: ["KokosukiMailbox"]),
+        .testTarget(name: "MeowCloudTests", dependencies: ["MeowCloud"]),
+        .testTarget(name: "MeowMemoryTests", dependencies: ["MeowMemory"]),
+        .testTarget(name: "MeowNewsTests", dependencies: ["MeowNews"]),
+        .testTarget(name: "MeowMemosTests", dependencies: ["MeowMemos"]),
+        .testTarget(name: "MeowMailboxTests", dependencies: ["MeowMailbox"]),
     ] + (cloudOnly ? [] : [
         .executableTarget(
-            name: "kokosuki-cli",
+            name: "meow-cli",
             dependencies: mlxDependencies,
-            path: "Sources/KokosukiCLI"
+            path: "Sources/MeowCLI"
         ),
     ])
 )

@@ -4,13 +4,13 @@
 
 ```text
 Sources/
-  KokosukiCloud/        火山引擎协议、SSE、请求配置
-  KokosukiMemory/       记忆数据、检索、版本、学习规则
-  KokosukiNews/         热榜抓取、选题、偏好、时间策略
-  KokosukiMemos/        备忘录数据、事务规则、调度策略、模型协议
-  KokosukiMailbox/      信箱模型、设备码、队列、回执与传输接口
-  KokosukiIroh/         基于 iroh-ffi 的认证 QUIC 收发适配
-  Kokosuki/
+  MeowCloud/        火山引擎协议、SSE、请求配置
+  MeowMemory/       记忆数据、检索、版本、学习规则
+  MeowNews/         热榜抓取、选题、偏好、时间策略
+  MeowMemos/        备忘录数据、事务规则、调度策略、模型协议
+  MeowMailbox/      信箱模型、设备码、队列、回执与传输接口
+  MeowIroh/         基于 iroh-ffi 的认证 QUIC 收发适配
+  Meow/
     main.swift         应用与诊断入口
     App/               AppDelegate、名称、菜单栏图标、CompanionFeatures 装配
     Conversation/      Brain、Persona、对话工具路由、聊天窗口、气泡
@@ -27,7 +27,7 @@ Sources/
 
 ## 编译边界与依赖方向
 
-云端、记忆、热点、备忘录和信箱内核不导入应用、AppKit、SwiftUI，也不互相依赖。`KokosukiIroh` 实现信箱内核的 `MailTransport`，单独承担 IrohLib/Rust FFI 依赖。主应用负责 MainActor、Combine 与原生窗口。目录层次是应用内的职责边界，不是额外的动态插件系统。
+云端、记忆、热点、备忘录和信箱内核不导入应用、AppKit、SwiftUI，也不互相依赖。`MeowIroh` 实现信箱内核的 `MailTransport`，单独承担 IrohLib/Rust FFI 依赖。主应用负责 MainActor、Combine 与原生窗口。目录层次是应用内的职责边界，不是额外的动态插件系统。
 
 `CompanionFeatures` 是功能装配入口：将具体 Brain、记忆偏好、PetEngine 和通信传输适配成依赖。热点、备忘录和信箱遵循 `CompanionFeature`，统一处理启动、休眠恢复、配置变更和退出；备忘录优先于热点，等待中的到点提醒也会抑制无关闲聊和贴墙招呼。信箱独立于模型，不将正文交给 Brain；未读数量单独更新小猫抱信状态。
 
@@ -41,4 +41,4 @@ Sources/
 4. 菜单只负责打开功能窗口。主动展示使用引擎的 `speakProactively`；功能控制器只有实际展示成功后才记录已提醒。
 5. 将离线集成测试放在 `Diagnostics`，接入 `--selftest --unit-only`。涉及原生布局时增加独立样例截图入口。
 
-应用名称仍为 Meow.app，小猫称为高小喵。原有 bundle id、钥匙串标识和 Application Support 目录保留，避免模块整理导致已有配置、聊天或记忆丢失。
+应用和宠物的唯一名称为 Meow，当前 bundle id 为 `com.meow.pet`。`Infrastructure/LegacyMigration.swift` 集中保存旧标识，负责首次启动时导入数据和偏好，并在首次读取凭据时迁移钥匙串项。当前数据目录为 `~/Library/Application Support/Meow/`；原目录和原钥匙串项保留为备份，新数据优先，已清除的凭据不会重新导入。迁移失败会明确提示，避免以空记录或新身份替换旧记录。

@@ -5,7 +5,7 @@ into this folder before packaging the app.
 
 ## Default model
 
-Kokosuki is built and tuned against
+Meow is built and tuned against
 [`mlx-community/MiniCPM5-1B-OptiQ-4bit`](https://huggingface.co/mlx-community/MiniCPM5-1B-OptiQ-4bit):
 
 ```bash
@@ -20,7 +20,7 @@ done
 (or use `huggingface-cli download mlx-community/MiniCPM5-1B-OptiQ-4bit --local-dir .`)
 
 The packaging script copies everything here into
-`Kokosuki.app/Contents/Resources/model/`.
+`Meow.app/Contents/Resources/model/`.
 
 ## Using a different MLX model
 

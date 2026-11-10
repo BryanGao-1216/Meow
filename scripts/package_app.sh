@@ -4,29 +4,40 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="Meow"
-APP_VERSION="${MEOW_VERSION:-1.0.4}"
-APP_BUILD="${MEOW_BUILD_NUMBER:-5}"
+APP_VERSION="${MEOW_VERSION:-1.0.8}"
+APP_BUILD="${MEOW_BUILD_NUMBER:-9}"
 SIGNING_IDENTITY="${MEOW_CODESIGN_IDENTITY:--}"
 export MACOSX_DEPLOYMENT_TARGET="14.4"
 [[ "$APP_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "版本号无效" >&2; exit 1; }
 [[ "$APP_BUILD" =~ ^[0-9]+$ ]] || { echo "构建号无效" >&2; exit 1; }
 APP="$ROOT/build/$APP_NAME.app"
-BIN="$ROOT/.build/release/Kokosuki"
+BIN="$ROOT/.build/release/Meow"
 CLOUD_ONLY=0
-if [[ "${1:-}" == "--cloud-only" ]]; then
-  CLOUD_ONLY=1
-elif [[ $# -gt 0 ]]; then
-  echo "usage: $0 [--cloud-only]" >&2
-  exit 1
+ARCH=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cloud-only) CLOUD_ONLY=1; shift ;;
+    --arch)
+      [[ $# -ge 2 ]] || { echo "--arch 需要架构名称" >&2; exit 1; }
+      ARCH="$2"; shift 2 ;;
+    *) echo "用法：$0 [--cloud-only] [--arch universal2|arm64|x86_64]" >&2; exit 1 ;;
+  esac
+done
+if [[ -z "$ARCH" ]]; then
+  if [[ "$CLOUD_ONLY" == "1" ]]; then ARCH=universal2; else ARCH=arm64; fi
+fi
+case "$ARCH" in universal2|arm64|x86_64) ;; *) echo "架构名称无效" >&2; exit 1 ;; esac
+if [[ "$CLOUD_ONLY" == "0" && "$ARCH" != "arm64" ]]; then
+  echo "当前本地 MLX 模式仅构建 Apple 芯片版；Intel 或通用版请加 --cloud-only。" >&2; exit 1
 fi
 
 echo "==> swift build"
-python3 "$ROOT/scripts/prepare_iroh.py"
 if [[ "$CLOUD_ONLY" == "1" ]]; then
-  KOKOSUKI_CLOUD_ONLY=1 swift build -c release --package-path "$ROOT" --scratch-path "$ROOT/.build-cloud" >/dev/null
-  BIN="$ROOT/.build-cloud/release/Kokosuki"
+  bash "$ROOT/scripts/build_cloud.sh" "$ARCH"
+  BIN="$ROOT/.build-cloud/release/Meow"
 else
-  swift build -c release --package-path "$ROOT" >/dev/null
+  python3 "$ROOT/scripts/prepare_iroh.py"
+  swift build -c release --arch arm64 --package-path "$ROOT" >/dev/null
 fi
 BIN_DIR="$(dirname "$BIN")"
 
@@ -81,7 +92,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleLocalizations</key><array><string>zh-Hans</string></array>
     <key>CFBundleExecutable</key><string>$APP_NAME</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>CFBundleIdentifier</key><string>com.kokosuki.pet</string>
+    <key>CFBundleIdentifier</key><string>com.meow.pet</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>$APP_NAME</string>
     <key>CFBundleDisplayName</key><string>$APP_NAME</string>
@@ -98,7 +109,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 printf 'APPL????' > "$APP/Contents/PkgInfo"
-python3 "$ROOT/scripts/macos_compat.py" --app "$APP"
+python3 "$ROOT/scripts/macos_compat.py" --app "$APP" --arch "$ARCH"
 
 if [[ "$SIGNING_IDENTITY" == "-" ]]; then
   echo "==> 本机签名（更新二进制后，钥匙串可能需要重新授权）"
@@ -107,10 +118,7 @@ else
   echo "==> 使用指定身份签名"
   codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$APP"
 fi
-codesign --verify --deep --strict "$APP"
-
-# 移除旧名称的构建产物，避免再次打开旧版；用户数据另存于 Application Support。
-rm -rf "$ROOT/build/Kokosuki.app" "$ROOT/build/高小喵.app"
+codesign --verify --all-architectures --deep --strict "$APP"
 
 du -sh "$APP"
 echo "done: $APP"

@@ -29,7 +29,7 @@ fi
 [[ -d "$APP/Contents/MacOS" ]] || { echo "找不到完整的 Meow.app：$APP" >&2; exit 1; }
 APP="$(cd "$(dirname "$APP")" && pwd)/$(basename "$APP")"
 PLIST="$APP/Contents/Info.plist"
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" == "com.kokosuki.pet" ]] || {
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" == "com.meow.pet" ]] || {
   echo "应用标识不匹配，未生成安装包" >&2; exit 1;
 }
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")" == "Meow" ]] || {
@@ -37,13 +37,17 @@ PLIST="$APP/Contents/Info.plist"
 }
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
 [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "应用版本号无效" >&2; exit 1; }
-[[ "$(lipo -archs "$APP/Contents/MacOS/Meow")" == "arm64" ]] || {
-  echo "此分发脚本仅支持 Apple 芯片版本" >&2; exit 1;
-}
-codesign --verify --deep --strict "$APP"
-python3 "$ROOT/scripts/macos_compat.py" --app "$APP"
+ARCHS="$(lipo -archs "$APP/Contents/MacOS/Meow")"
+case "$ARCHS" in
+  arm64) ARCH_LABEL=arm64 ;;
+  x86_64) ARCH_LABEL=x86_64 ;;
+  "arm64 x86_64"|"x86_64 arm64") ARCH_LABEL=universal2 ;;
+  *) echo "不支持的应用架构：$ARCHS" >&2; exit 1 ;;
+esac
+codesign --verify --all-architectures --deep --strict "$APP"
+python3 "$ROOT/scripts/macos_compat.py" --app "$APP" --arch "$ARCH_LABEL"
 
-OUTPUT="${OUTPUT:-$ROOT/build/Meow-$VERSION-macOS-arm64.dmg}"
+OUTPUT="${OUTPUT:-$ROOT/build/Meow-$VERSION-macOS-$ARCH_LABEL.dmg}"
 [[ "$OUTPUT" == *.dmg ]] || { echo "输出文件名应以 .dmg 结尾" >&2; exit 1; }
 mkdir -p "$(dirname "$OUTPUT")"
 OUTPUT="$(cd "$(dirname "$OUTPUT")" && pwd)/$(basename "$OUTPUT")"
@@ -55,7 +59,7 @@ ln -s /Applications "$STAGING/Applications"
 cp "$ROOT/packaging/安装与使用说明.txt" "$STAGING/安装与使用说明.txt"
 cp "$ROOT/LICENSE" "$STAGING/开源许可.txt"
 touch "$STAGING/.metadata_never_index"
-codesign --verify --deep --strict "$STAGING/Meow.app"
+codesign --verify --all-architectures --deep --strict "$STAGING/Meow.app"
 
 echo "正在生成安装磁盘…"
 hdiutil create -volname "Meow 安装" -srcfolder "$STAGING" -fs HFS+ -format UDZO -ov "$OUTPUT"

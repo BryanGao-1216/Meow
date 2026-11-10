@@ -1,6 +1,6 @@
 # 喵喵信箱
 
-第一版提供两台固定 Apple 芯片 Mac 之间的文本送信。使用本地固定版本 iroh-ffi v1.2.0 的 Swift 绑定与 Rust 静态库，最低系统版本为 macOS 14.4。信箱不调用大模型，也不把来信当成指令、聊天历史或主人记忆。
+提供两台固定 Mac 之间的文本送信，支持 Apple 芯片和 Intel 互寄。使用本地固定版本 iroh-ffi v1.2.0 的 Swift 绑定与 Rust 静态库，最低系统版本为 macOS 14.4。信箱不调用大模型，也不把来信当成指令、聊天历史或主人记忆。
 
 ## 两台设备如何使用
 
@@ -9,7 +9,7 @@
 3. 在“设备绑定”里填写本机名称，复制固定的本机设备码，通过你选择的渠道交给对方。本机名称和对方备注分别保存，均只在本机显示，不影响设备身份。
 4. 两边各粘贴对方的设备码并绑定。只在一边绑定还不能互相收信。
 5. 点击“写一封信”，填写正文并寄出。对方离线时，信留在本机待寄箱；双方运行、唤醒且网络可用后自动重试。
-6. 收件方的小喵会用前爪举着 💌 上下晃动，并用气泡说“主人，来信啦”；角标表示未读数。点击信封展开来信并标记已读，信件继续保留在信箱中。
+6. 收件方的 Meow 会用前爪举着 💌 上下晃动，并用气泡说“主人，来信啦”；角标表示未读数。点击信封展开来信并标记已读，信件继续保留在信箱中。
 
 新版设备码只包含固定的公开设备身份，以固定顺序编码，不包含私钥、设备名字或临时网络地址。只要钥匙串中的设备私钥未改变，网络、端口变化和应用重启都不会改变这个码；收发时由 iroh 的发现服务查询最新地址，通信报文也会交换经过认证的动态地址。原来的带地址设备码仍可识别，已有绑定按公钥保留，不需要因更新重新配对。
 
@@ -26,9 +26,9 @@
 - 接收端先将正文、未读状态与回执一起写入本机文件，再发成功回执。保存失败拒发成功回执。相同编号重试只返回已有回执，不重复显示，也不让已读信重新变成未读。删除后仍保存回执，避免丢回执重传造成信件复活。
 - 正文为纯文本，最多 5000 字且 UTF-8 不超过 16 KiB；线上的 JSON 报文最多 32 KiB。不解析附件、HTML 或远端脚本。
 
-本机 JSON 为 `~/Library/Application Support/Kokosuki/meow-mailbox.json`，包含信件、已读标记、固定对端、队列/回执、绑定输入草稿及本机设备码缓存。新增字段为可选，兼容旧版数据。文件权限为仅本人读写；损坏文件不会用空白信箱覆盖。本机存储是 JSON 原文，传输加密由 iroh/QUIC 提供。
+本机 JSON 为 `~/Library/Application Support/Meow/meow-mailbox.json`，包含信件、已读标记、固定对端、队列/回执、绑定输入草稿及本机设备码缓存。新增字段为可选，兼容旧版数据。文件权限为仅本人读写；损坏文件不会用空白信箱覆盖。本机存储是 JSON 原文，传输加密由 iroh/QUIC 提供。
 
-32 字节设备私钥单独存入 macOS 钥匙串服务 `com.kokosuki.pet.iroh.identity`，不会写入信箱文件、设备码或日志。钥匙串读取失败时不会悄悄生成新身份替代旧身份。私钥遗失或身份改变后，应解除旧绑定并重新互换设备码。
+32 字节设备私钥单独存入 macOS 钥匙串服务 `com.meow.pet.iroh.identity`，不会写入信箱文件、设备码或日志。钥匙串读取失败时不会悄悄生成新身份替代旧身份。私钥遗失或身份改变后，应解除旧绑定并重新互换设备码。
 
 ## 应用中的呈现
 
@@ -42,26 +42,28 @@
 
 | 位置 | 职责 |
 |---|---|
-| `Sources/KokosukiMailbox` | 纯 Foundation 信件模型、存储、设备码、回执去重、队列及传输协议 |
-| `Sources/KokosukiIroh` | iroh-ffi 适配、监听、认证身份校验、QUIC 收发和连接生命周期 |
-| `Sources/Kokosuki/Features/Mailbox` | 应用控制器、设备绑定、信箱列表、写信和读信界面 |
-| `Sources/Kokosuki/Infrastructure/MailIdentityStore.swift` | 钥匙串身份适配 |
-| `Sources/Kokosuki/Diagnostics/MailboxSelfTest.swift` | 内核、故障和真实本机 QUIC 集成测试 |
-| `Sources/Kokosuki/Diagnostics/MailboxPreview.swift` | 信箱与抱信造型实窗检查、真实鼠标事件验证 |
+| `Sources/MeowMailbox` | 纯 Foundation 信件模型、存储、设备码、回执去重、队列及传输协议 |
+| `Sources/MeowIroh` | iroh-ffi 适配、监听、认证身份校验、QUIC 收发和连接生命周期 |
+| `Sources/Meow/Features/Mailbox` | 应用控制器、设备绑定、信箱列表、写信和读信界面 |
+| `Sources/Meow/Infrastructure/MailIdentityStore.swift` | 钥匙串身份适配 |
+| `Sources/Meow/Diagnostics/MailboxSelfTest.swift` | 内核、故障和真实本机 QUIC 集成测试 |
+| `Sources/Meow/Diagnostics/MailboxPreview.swift` | 信箱与抱信造型实窗检查、真实鼠标事件验证 |
 
 传输通过 `MailTransport` 注入，信箱的数据模型不依赖 IrohLib、AppKit、SwiftUI 或 Brain。`CompanionFeatures` 统一接入信箱的启动、唤醒与退出；模型设置变更不会重启点对点通信。
 
 ## 构建与检查
 
-`scripts/package_app.sh` 会先调用 `scripts/prepare_iroh.py` 准备固定版本 Swift 绑定与官方 Apple 压缩包，核对 SHA-256 并放入忽略提交的 `.build-iroh` 缓存。上游包和 macOS 预编译库要求 14.5，因此脚本会幂等调整第三方包的 macOS 声明为 14.4，并调用 `build_iroh_macos.py`，使用同一提交和 `Cargo.lock` 重编译 macOS 静态库：目标为 `aarch64-apple-darwin`，CPU 为 `apple-m1`，`MACOSX_DEPLOYMENT_TARGET=14.4`。不会修改官方压缩包，也不会直接改写预编译库的版本标记。
+`scripts/package_app.sh` 会先调用 `scripts/prepare_iroh.py` 准备固定版本 Swift 绑定与官方 Apple 压缩包，核对 SHA-256 并放入忽略提交的 `.build-iroh` 缓存。上游包和 macOS 预编译库要求 14.5，因此脚本会幂等调整第三方包的 macOS 声明为 14.4，并调用 `build_iroh_macos.py`，使用同一提交和 `Cargo.lock` 分别构建 `aarch64-apple-darwin` 与 `x86_64-apple-darwin` 静态库。Apple 芯片采用 `apple-m1` 基线，Intel 采用通用 `x86-64` 基线；两者均设置 `MACOSX_DEPLOYMENT_TARGET=14.4`，不使用开发机的原生 CPU 指令优化。
 
-首次编译需 Rust 1.91+ 和联网下载依赖，无需构建 iOS 或安装完整 iOS 工具链。兼容库按源码提交、锁文件、构建参数与结果校验值缓存；之后有效缓存可直接使用。安装包接收者无需 Rust。打包前由 `macos_compat.py` 检查库及最终 Mach-O 的最低系统版本，防止将要求更高系统的旧产物混入安装包。
+两个静态库合并为 `.build-iroh/Iroh-universal.xcframework/macos-arm64_x86_64` 切片，配合匹配的接口头文件和 XCFramework 元数据，由被忽略的第三方包路径引用。每个架构的源码构建缓存、合并输入及合并结果都有独立校验。不会修改官方压缩包，也不会直接改写预编译库的版本标记。
+
+首次编译需 Rust 1.91+、安装两个 Darwin 目标及联网下载依赖，无需构建 iOS 或安装完整 iOS 工具链。兼容库按源码提交、锁文件、构建参数与结果校验值缓存；之后有效缓存可直接使用。安装包接收者无需 Rust。打包前由 `macos_compat.py` 检查库及最终 Mach-O 的所有架构与最低系统版本，防止漏装 Intel 切片或混入要求更高系统的旧产物。
 
 ```sh
 python3 scripts/prepare_iroh.py
 ./scripts/package_app.sh --cloud-only
-.build-cloud/release/Kokosuki --mailbox-check
-.build-cloud/release/Kokosuki --mailbox-render-check /tmp/meow-mailbox-preview
+.build-cloud/release/Meow --mailbox-check
+.build-cloud/release/Meow --mailbox-render-check /tmp/meow-mailbox-preview
 ```
 
 `--mailbox-check` 使用临时信箱、临时身份，启动两个真实 iroh-ffi 端点在 `127.0.0.1` 收发，并用第三个端点验证拒收未绑定身份。还覆盖离线待寄、回执去重、已读保留、保存失败与恢复。不会读取用户钥匙串，也不接触公开发现/中继或 LLM API。`--selftest --unit-only` 包含这些本机连接测试。

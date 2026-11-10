@@ -1,25 +1,27 @@
 <div align="center">
 
-<img src="assets/icon.png" width="128" alt="高小喵图标" />
+<img src="assets/icon.png" width="128" alt="Meow 图标" />
 
-# Meow · 高小喵
+# Meow
 
 **一只会聊天、记住主人、做动作、提醒待办和收发来信的桌面小猫。**
 
 支持火山方舟云端对话与本地模型推理，界面和对话均使用简体中文。
 
+Meow 基于原作者 **Fangyuan Lin（[Fangyuan025](https://github.com/Fangyuan025)）** 的开源项目 **[Kokosuki](https://github.com/Fangyuan025/Kokosuki)** 二次开发，完整保留原项目的版权声明与 MIT 许可证，详见文末的[版权与致谢](#版权与致谢)。
+
 ![系统要求](https://img.shields.io/badge/系统-macOS%2014.4%2B-blue)
-![芯片架构](https://img.shields.io/badge/芯片-Apple%20Silicon-black)
+![芯片架构](https://img.shields.io/badge/芯片-Apple%20Silicon%20%2B%20Intel-black)
 ![开发语言](https://img.shields.io/badge/语言-Swift%205.10%2B-orange)
 ![开源许可](https://img.shields.io/badge/许可-MIT-lightgrey)
 
-<img src="assets/pet-states.png" width="800" alt="高小喵的表情与动作展示" />
+<img src="assets/pet-states.png" width="800" alt="Meow 的表情与动作展示" />
 
-小喵的造型和动画由 SwiftUI 画布绘制，可随状态变化，不依赖整套贴图素材。
+Meow 的造型和动画由 SwiftUI 画布绘制，可随状态变化，不依赖整套贴图素材。
 
 </div>
 
-## 小喵能做什么
+## Meow 能做什么
 
 | 功能 | 说明 |
 |---|---|
@@ -35,10 +37,22 @@
 
 普通使用者可以直接使用发布者提供的 **Meow 安装磁盘（`.dmg`）**，无需下载源码、安装开发工具或下载本地模型。
 
-1. 在 M1 或更新的 Apple 芯片、macOS 14.4 或更高版本的 Mac 上打开安装磁盘。
+当前打包版本为 **1.0.8**，可按设备选择：
+
+| 安装包 | 适用设备 |
+|---|---|
+| `Meow-1.0.8-macOS-universal2.dmg` | Apple 芯片与 Intel Mac，系统自动选择架构 |
+| `Meow-1.0.8-macOS-arm64.dmg` | Apple 芯片 Mac，M1 起 |
+| `Meow-1.0.8-macOS-x86_64.dmg` | Intel 64 位 Mac |
+
+三种安装包的最低系统版本均为 **macOS 14.4**。安装包由发布者另行提供，构建产物不随源码提交。
+
+1. 在 Apple 芯片（M1 起）或 Intel 64 位芯片、macOS 14.4 或更高版本的 Mac 上打开对应安装磁盘。通用版同时包含两种架构，系统会自动选择。
 2. 将 `Meow.app` 拖入旁边的 **Applications（应用程序）** 文件夹。
 3. 从“应用程序”打开 Meow，首次在设置中填写云端模型密钥；使用其他接入方案时同时调整接口地址和模型名称。
 4. 测试连接并保存，即可开始聊天；基础动作不依赖模型配置，信箱可按需启用和绑定。
+
+更新时先退出正在运行的 Meow，再替换“应用程序”中的 `Meow.app`。改名版本会导入旧版的聊天、记忆、备忘录、信箱和设置，原目录保留为备份；首次读取旧钥匙串凭据时，系统可能要求授权。已有的 Meow 数据优先，原信箱设备身份继续沿用。
 
 当前测试包采用本机签名，尚未经过 Apple 公证。首次打开若提示无法验证开发者，在确认来源可信后，可按 [Apple 官方说明](https://support.apple.com/zh-cn/102445) 从“系统设置 → 隐私与安全性”确认打开。正式分发可补做 Developer ID 签名和公证。
 
@@ -52,7 +66,7 @@
 
 | 项目 | 要求 |
 |---|---|
-| 设备 | M1 或更新的 Apple 芯片 Mac |
+| 设备 | Apple 芯片（M1 起）或 Intel 64 位 Mac；本地 MLX 模式仅适用于 Apple 芯片 |
 | 系统 | macOS 14.4 或更高版本 |
 | 开发工具 | 可用且版本匹配的 Xcode 命令行工具，Swift 5.10 或更高版本 |
 | 其他工具 | Git、Python 3.9 或更高版本；首次编译通信库需 Rust 1.91 或更高版本 |
@@ -77,11 +91,17 @@ cd Meow
 open build/Meow.app
 ```
 
-打包脚本会自动准备固定版本的 iroh-ffi 源码，下载并校验官方压缩包，保留匹配的接口头文件，再从源码重新构建 M1 / macOS 14.4 通信库。首次需要下载约 41 MB 的官方压缩包及 Rust 编译依赖，编译可能需要数分钟，后续复用本机缓存。Rust 可按 [官方安装说明](https://www.rust-lang.org/tools/install) 安装，也可用 `MEOW_CARGO` 指定已有的 `cargo` 路径。
+打包脚本会自动准备固定版本的 iroh-ffi 源码，下载并校验官方压缩包，保留匹配的接口头文件，再从源码分别构建 Apple 芯片和 Intel 的 macOS 14.4 通信库。首次需要下载约 41 MB 的官方压缩包及 Rust 编译依赖，编译可能需要数分钟，后续复用各架构缓存。Rust 可按 [官方安装说明](https://www.rust-lang.org/tools/install) 安装，也可用 `MEOW_CARGO` 指定已有的 `cargo` 路径。首次通用构建前需执行：
+
+```sh
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+```
 
 构建完成后，应用位于 `build/Meow.app`。关闭旧版应用，再打开新版即可。重新拉取更新后，也需再次执行打包命令。
 
-应用、安装信息和通信库均以 **M1 / macOS 14.4** 为兼容基线。打包时会自动检查真实可执行文件及嵌入动态库的架构和最低系统版本；也可运行 `python3 scripts/macos_compat.py --app build/Meow.app` 单独检查。最终发布前应在 M1、macOS 14.4 真机上验收。
+云端版默认生成 **通用版（arm64 + x86_64）**，最低系统版本为 macOS 14.4。也可用 `./scripts/package_app.sh --cloud-only --arch arm64` 或 `--arch x86_64` 生成单架构应用。Intel 版沿用云端模型，保留桌宠、记忆、备忘录、热点和信箱功能。
+
+打包时会检查真实可执行文件的每个架构及嵌入动态库，防止漏掉 Intel 切片或混入要求更高系统的代码；也可运行 `python3 scripts/macos_compat.py --app build/Meow.app --arch universal2` 单独检查。最终发布前应分别在目标 Apple 芯片和 Intel Mac 上验收；在 Apple 芯片开发机上运行 Intel 检查需要 Rosetta。
 
 ### 配置火山方舟
 
@@ -128,21 +148,23 @@ open build/Meow.app
 
 ## 日常互动
 
-| 操作 | 小喵的反应 |
+| 操作 | Meow 的反应 |
 |---|---|
 | 单击身体 | 戳一戳；连续戳会不高兴 |
 | 双击身体 | 打开聊天窗口 |
 | 右键或点击菜单栏猫咪图标 | 打开喂食、玩耍、睡觉、设置及各功能入口 |
-| 拖动并松手 | 抱起、移动或抛出小喵，落地时有物理与形变动画 |
+| 拖动并松手 | 抱起、移动或抛出 Meow，落地时有物理与形变动画 |
 | 在身上来回移动鼠标 | 抚摸、冒爱心 |
 | 拖到屏幕左右边缘 | 固定贴墙，暂停自主乱跑 |
 | 点击怀中的 💌 | 展开未读来信，信件继续保存在信箱中 |
+
+戳猫、抚摸会等当前反应和气泡完整结束，再接受下一次轻互动，避免连续操作重置动作。连续戳产生的抗议会合并为一次，等前一个反应结束后再出现；双击聊天、拖拽和明确的动作指令仍可立即接管。
 
 设置中可选择 **迷你 0.5 倍、小 0.8 倍、中 1.0 倍、大 1.3 倍** 四种尺寸，也可调整主动搭话频率、夜间自动睡觉和自主跳窗。
 
 ### 通过对话做动作
 
-直接对小喵说：
+直接对 Meow 说：
 
 ```text
 打个滚给我看
@@ -159,11 +181,11 @@ open build/Meow.app
 
 明确指令会先开始动作，再生成聊天回复，每轮最多执行一个动作。动作指令不依赖模型成功返回；讲故事、引用或假设中的动作不会只因为出现动作词就直接执行。
 
-小喵也会根据心情、精力和相处偏好自行活动。动作库由程序内部维护，菜单中不展示。实现方式见 [动作系统设计](docs/ACTIONS.md)。
+Meow 也会根据心情、精力和相处偏好自行活动。动作库由程序内部维护，菜单中不展示。实现方式见 [动作系统设计](docs/ACTIONS.md)。
 
 ### 贴墙与探身
 
-将小喵拖到屏幕左侧或右侧后松手，它会停在对应高度，只露出连着耳朵、截止到眼睛下方的上半张脸，嘴巴和身体藏在屏幕外。
+将 Meow 拖到屏幕左侧或右侧后松手，它会停在对应高度，只露出连着耳朵、截止到眼睛下方的上半张脸，嘴巴和身体藏在屏幕外。
 
 鼠标移开后再靠近，它会轻轻弹出身体，露出嘴巴、肚子、爪子和尾巴，用固定短句打招呼；鼠标移开后缩回。招呼在本机触发，不调用模型，已有对话或提醒时不会抢话。收到未读来信时，会探出身体展示怀中的信封。
 
@@ -175,7 +197,7 @@ open build/Meow.app
 
 从菜单或设置打开 **小本本…**，查看记住的资料、原话来源、旧版本和共同经历，也可删除资料或清空记忆。
 
-| 你可以说 | 小喵会如何使用 |
+| 你可以说 | Meow 会如何使用 |
 |---|---|
 | “以后叫我小高吧” | 记住称呼，用于之后的聊天 |
 | “我的生日是十月九号” | 记住明确的生日信息 |
@@ -193,9 +215,13 @@ open build/Meow.app
 
 ### 热点小报：聊主人感兴趣的话题
 
-启用定时分享后，小喵会在北京时间每天 **11:00、16:00、19:00** 抓取微博热点，结合记忆中的偏好选择话题，等空闲时主动分享。
+启用定时分享后，Meow 会在北京时间每天 **11:00、16:00、19:00** 抓取微博热点，结合记忆中的偏好选择话题，等空闲时主动分享。
 
 可以告诉它“我关注人工智能”“我不喜欢娱乐八卦”，再从 **热点小报…** 查看来源或点击 **现在找一条**。菜单名称为“热点小报”，当前内容来源为微博。
+
+公开热榜通常不需要登录；如果只有题目、没有正文，在 **微博登录凭据（可选）** 中粘贴已登录 `weibo.com` 或 `s.weibo.com` 的完整请求 Cookie（包含 `SUB`），点击 **保存并验证**。支持 `Cookie: ...` 前缀；“打开网页版微博”只负责打开浏览器，不会自动同步登录状态。
+
+验证会实际尝试读取网页版微博正文，不调用模型，也不消耗模型额度。**保存到钥匙串成功不等于微博登录验证通过**；界面会分别提示登录或验证页面、访问限制、没有正文和页面格式变化。通过后再点击 **现在找一条**。更新凭据会取消旧抓取任务，允许重新获取尚未分享的纯标题小报；已分享的历史小报不会自动补正文。Cookie 仅保存在本机钥匙串，不进入模型提示词、缓存或日志。
 
 功能需要应用运行、电脑唤醒、网络和可用的云端模型。休眠恢复时只补最近一小时内的一期，避免集中推送过时话题。详见 [热点系统说明](docs/NEWS_DESIGN.md)。
 
@@ -213,20 +239,20 @@ open build/Meow.app
 
 时间或目标不明确时会先追问，操作实际保存成功后才确认。备忘录有两种提醒方式：
 
-- **到点提醒**：任务到期后，由模型生成小喵口吻的提醒。
+- **到点提醒**：任务到期后，由模型生成 Meow 口吻的提醒。
 - **提前提醒**：每半小时结合当前任务、主人偏好和最近提醒，判断是否需要提前叫你准备；没有必要就保持安静。
 
 提前提醒可单独关闭，到点提醒仍保留。两种提醒均依赖可用的云端模型；应用退出或电脑休眠期间不会发出提醒，恢复后会补处理尚未通知的到点任务。详见 [备忘录说明](docs/MEMOS_DESIGN.md)。
 
-### 喵喵信箱：让两只小喵互相送信
+### 喵喵信箱：让两只 Meow 互相送信
 
-当前支持两台固定的 Apple 芯片 Mac 之间发送纯文本信件，每封最多 5000 字，正文的编码大小也有限制。
+当前支持两台固定的 Mac 之间发送纯文本信件，Apple 芯片与 Intel 可以互寄；每封最多 5000 字，正文的编码大小也有限制。
 
 1. 两台 Mac 都启动新版 Meow，打开 **喵喵信箱…** 并启用通信。
 2. 在 **设备绑定** 中，各自复制本机设备码并交给对方。
 3. **两边各粘贴一次对方的设备码并绑定**，只绑定一边还不能互相收信。
 4. 点击 **写一封信**，填写正文并寄出。
-5. 收件方小喵会用前爪举着 💌 上下晃动，并说“主人，来信啦”。点击信封展开正文，读完后仍可在信箱查看历史。
+5. 收件方 Meow 会用前爪举着 💌 上下晃动，并说“主人，来信啦”。点击信封展开正文，读完后仍可在信箱查看历史。
 
 只要还有未读信就会继续举信，全部读完后收起；左右贴墙时也会探出身体举信。报信使用固定中文台词，不依赖模型，等当前聊天、动作或备忘录提醒结束后再说，睡着时等醒来。短时间多封来信合并报数，至少间隔 30 秒；重新打开应用时，已有未读信仍会举起，但不会被当成新信重复报信。
 
@@ -240,9 +266,9 @@ open build/Meow.app
 
 | 要修改的内容 | 位置或操作 |
 |---|---|
-| 小喵的性格、来历、档案与自我介绍 | `Sources/Kokosuki/Conversation/Persona.swift` 中的 `system(_:)` 和示例对话 |
-| 中文界面、固定互动台词与备用回复 | `Sources/Kokosuki/Infrastructure/Localization.swift` |
-| 主人的姓名、称呼、生日和喜好 | 日常通过聊天告诉小喵，记错时重新陈述或从小本本删除 |
+| Meow 的性格、来历、档案与自我介绍 | `Sources/Meow/Conversation/Persona.swift` 中的 `system(_:)` 和示例对话 |
+| 中文界面、固定互动台词与备用回复 | `Sources/Meow/Infrastructure/Localization.swift` |
+| 主人的姓名、称呼、生日和喜好 | 日常通过聊天告诉 Meow，记错时重新陈述或从小本本删除 |
 | 首次建立小本本时的主人资料模板 | `Persona.swift` 中的 `initialOwnerProfile`，仅首次初始化生效 |
 
 修改源码后需重新构建并重启。旧对话可能影响角色表现，可按需清空聊天。当前没有应用内的人设编辑器。
@@ -253,13 +279,13 @@ open build/Meow.app
 
 ```text
 Sources/
-├── KokosukiCloud/       云端请求、流式回复与配置校验
-├── KokosukiMemory/      记忆资料、检索、版本与学习规则
-├── KokosukiNews/        热点抓取、选题、偏好与时间策略
-├── KokosukiMemos/       备忘录数据、提醒策略与模型协议
-├── KokosukiMailbox/     信件、设备码、待寄队列与回执
-├── KokosukiIroh/        iroh-ffi 通信适配
-└── Kokosuki/
+├── MeowCloud/       云端请求、流式回复与配置校验
+├── MeowMemory/      记忆资料、检索、版本与学习规则
+├── MeowNews/        热点抓取、选题、偏好与时间策略
+├── MeowMemos/       备忘录数据、提醒策略与模型协议
+├── MeowMailbox/     信件、设备码、待寄队列与回执
+├── MeowIroh/        iroh-ffi 通信适配
+└── Meow/
     ├── App/            应用入口装配与菜单
     ├── Conversation/   模型调度、人设、聊天与对话工具
     ├── Pet/            状态、物理、动作、造型与贴墙
@@ -271,13 +297,13 @@ Sources/
 
 业务内核通过协议和依赖注入与应用连接。后台功能由 `CompanionFeatures` 统一管理生命周期，对话工具通过 `ConversationToolRouter` 接入。详细依赖关系和扩展步骤见 [架构说明](docs/ARCHITECTURE.md)。
 
-应用名称为 `Meow.app`，宠物名称为“高小喵”。代码中的 `Kokosuki` 模块名、应用标识和存储目录保留，用于兼容现有数据。
+应用和宠物统一命名为 **Meow**。源码模块以 `Meow` 开头，应用标识为 `com.meow.pet`。升级首次启动时会导入旧版的聊天、记忆、备忘录、信箱和偏好；原目录保留为备份，已有的 Meow 数据优先。钥匙串凭据首次使用时迁移，信箱沿用原设备身份。
 
 ## 数据与隐私
 
 | 数据或功能 | 存储位置或发送范围 |
 |---|---|
-| 聊天、记忆、备忘录、信件与宠物状态 | 本机 `~/Library/Application Support/Kokosuki/` |
+| 聊天、记忆、备忘录、信件与宠物状态 | 本机 `~/Library/Application Support/Meow/` |
 | 窗口位置、尺寸和模型设置 | 本机偏好设置 |
 | 模型密钥、可选的微博登录凭据、信箱私钥 | macOS 钥匙串 |
 | 云端聊天与智能功能 | 按功能需要，将对话、宠物状态、相关记忆或任务发送给所配置的模型服务 |
@@ -296,14 +322,14 @@ Sources/
 build/Meow.app/Contents/MacOS/Meow --selftest --unit-only
 ```
 
-检查覆盖中文协议、动作、贴墙、记忆、热点、备忘录和信箱。使用临时数据与模拟模型；信箱另使用临时身份，在本机回环地址进行真实 QUIC 收发，不访问公网中继或用户钥匙串。
+检查覆盖中文协议、动作与轻互动防抖、贴墙、改名迁移、记忆、热点、备忘录和信箱。微博检查使用模拟 Cookie、HTTP 响应和网页，不读取真实登录凭据；其他检查使用临时数据与模拟模型。信箱另使用临时身份，在本机回环地址进行真实 QUIC 收发，不访问公网中继或用户钥匙串。
 
 单元测试与实窗检查：
 
 ```sh
 # 直接使用包管理器前，先准备通信依赖
 python3 scripts/prepare_iroh.py
-KOKOSUKI_CLOUD_ONLY=1 swift test --scratch-path .build-cloud
+MEOW_CLOUD_ONLY=1 swift test --scratch-path .build-cloud
 
 # 原生窗口、造型和点击区域检查，截图输出到指定目录
 build/Meow.app/Contents/MacOS/Meow --wall-render-check /tmp/meow-wall-preview
@@ -321,7 +347,7 @@ build/Meow.app/Contents/MacOS/Meow --mailbox-render-check /tmp/meow-mailbox-prev
 ./scripts/package_dmg.sh
 ```
 
-脚本会先构建云端版，再生成 `build/Meow-<版本>-macOS-arm64.dmg` 和对应的校验文件。也可用 `--app build/Meow.app` 封装已经构建的应用，详见 [安装包说明](docs/DISTRIBUTION.md)。
+脚本会先构建云端通用版，再生成 `build/Meow-<版本>-macOS-universal2.dmg` 和对应的校验文件。也可用 `--app build/Meow.app` 封装已经构建的应用，脚本会按实际架构生成 `arm64`、`x86_64` 或 `universal2` 文件名。详见 [安装包说明](docs/DISTRIBUTION.md)。
 
 ## 上传与另一台设备使用
 
@@ -331,8 +357,20 @@ build/Meow.app/Contents/MacOS/Meow --mailbox-render-check /tmp/meow-mailbox-prev
 
 完整流程见 [上传 Git 与另一台 Mac 测试](docs/SECOND_MAC.md)。
 
-## 致谢与许可
+## 版权与致谢
 
-本项目基于 [Kokosuki](https://github.com/Fangyuan025/Kokosuki) 继续开发，使用 MLX Swift 进行本地推理，使用 iroh-ffi 实现设备通信，并参考 mem0、Mochi 等项目的记忆与提醒设计。
+### 原项目与原作者
 
-项目遵循 [MIT 许可证](LICENSE)。第三方依赖和模型遵循各自的许可证；发布包含模型的应用时，还需保留相应许可信息。
+Meow 基于 **[Kokosuki](https://github.com/Fangyuan025/Kokosuki)** 继续开发。原作者为 **Fangyuan Lin（GitHub：[Fangyuan025](https://github.com/Fangyuan025)）**，原项目采用 [MIT 许可证](https://github.com/Fangyuan025/Kokosuki/blob/main/LICENSE)。原始版权声明保留如下：
+
+> Copyright (c) 2026 Fangyuan Lin
+
+本仓库根目录的 [LICENSE](LICENSE) 完整保留原作者的版权声明和 MIT 许可原文。桌宠造型、SwiftUI 画布动画、本地模型对话与基础互动等原作成果归原作者所有；Meow 的项目改名和后续扩展不改变原作的版权归属。
+
+Meow 在原作基础上扩展了云端模型接入、长期记忆、热点小报、备忘录、点对点信箱和双架构打包，并调整了中文界面、动作调度与贴墙行为。安装磁盘打包脚本会将根目录的完整许可证一并放入安装包，文件名为 `开源许可.txt`。
+
+### 第三方项目
+
+感谢 MLX Swift 提供本地模型推理支持，iroh-ffi 提供设备通信能力，以及 mem0、Mochi、weibo-hot-with-your-taste 提供记忆、提醒和热点流程的设计参考。
+
+项目遵循 [MIT 许可证](LICENSE)。第三方依赖与模型保留各自的版权和许可证；它们的许可信息应随相应组件一并保留。

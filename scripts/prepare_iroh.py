@@ -33,6 +33,13 @@ def prepare():
         manifest.write_text(original.replace('.macOS("14.5")', '.macOS("14.4")', 1))
     elif '.macOS("14.4")' not in original:
         raise SystemExit("iroh-ffi 平台声明已变化，请先审查兼容性适配。")
+    original = manifest.read_text()
+    old_slice = "Iroh.xcframework/macos-arm64/libiroh_ffi.a"
+    universal_slice = "Iroh.xcframework/macos-arm64_x86_64/libiroh_ffi.a"
+    if old_slice in original:
+        manifest.write_text(original.replace(old_slice, universal_slice, 1))
+    elif universal_slice not in original:
+        raise SystemExit("iroh-ffi 本地库定位方式已变化，请先审查通用包适配。")
     CACHE.mkdir(exist_ok=True)
     archive = CACHE / "IrohLib.xcframework.zip"
     if not archive.exists():
@@ -53,11 +60,15 @@ def prepare():
                 if not (CACHE / member).resolve().is_relative_to(CACHE.resolve()):
                     raise SystemExit("无效的依赖压缩包路径。")
             bundle.extractall(CACHE)
-    prepare_macos(COMMIT)
+    framework = prepare_macos(COMMIT)
     target = SOURCE / "Iroh.xcframework"
+    if target.is_symlink() and target.resolve() != framework.resolve():
+        target.unlink()
     if not target.exists():
-        target.symlink_to("../../.build-iroh/Iroh.xcframework", target_is_directory=True)
-    print(f"iroh-ffi {TAG} 已就绪（M1 起 / macOS 14.4，源码版本、官方压缩包及兼容库均已校验）")
+        target.symlink_to("../../.build-iroh/Iroh-universal.xcframework", target_is_directory=True)
+    elif target.resolve() != framework.resolve():
+        raise SystemExit("第三方目录存在自行构建的 Iroh.xcframework，未覆盖；请先移开该构建产物再重试。")
+    print(f"iroh-ffi {TAG} 已就绪（arm64 + x86_64 / macOS 14.4，源码版本、官方压缩包及兼容库均已校验）")
 
 
 if __name__ == "__main__":
